@@ -42,10 +42,12 @@ meta = dict(
     package_dir={"": "src"},
     entry_points={"console_scripts": ["baby-measure = baby_measure.app:cli"]},
     install_requires=[
+        "gitpython",
         "dash",
         "dash-datetimepicker",
         "dash-loading-spinners",
         "sqlalchemy",
+        "PyGithub",
         "pymysql",
         "gunicorn",
         "pandas",
