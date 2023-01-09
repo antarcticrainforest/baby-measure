@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 from setuptools import setup, find_packages
 from typing import List
 
@@ -12,7 +11,7 @@ def get_assests(*parts: str) -> List[str]:
 
 meta = dict(
     description="Add baby mesurements",
-    url="https://github.com/antarcticrainforest/geojson-viewer",
+    url="https://github.com/antarcticrainforest/baby-measure",
     author="Martin Bergemann",
     author_email="martin.bergemann@posteo.org",
     include_package_data=True,
@@ -21,23 +20,25 @@ meta = dict(
     python_requires=">=3.7",
     package_data={"": get_assests("src", "baby_measure", "assets")},
     project_urls={
-        "Issues": "https://github.com/antarcticrainforest/geojson-viewer/issues",
-        "Source": "https://github.com/antarcticrainforest/geojson-viewer",
+        "Issues": "https://github.com/antarcticrainforest/baby-measure/issues",
+        "Source": "https://github.com/antarcticrainforest/baby-measure",
     },
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 1 - Planning",
         "Environment :: Console",
-        "Intended Audience :: Developers",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: BSD License",
+        "Intended Audience :: Other Audience" "License :: Freely Distributable",
         "Operating System :: POSIX :: Linux",
+        "Natural Language :: English",
+        "Topic :: System :: Logging",
+        "Environment :: Web Environment",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
-    version="0.1.0",  # find_version("src", "geojson_viewer", "app.py"),
+    version="0.1.0",
     package_dir={"": "src"},
     entry_points={"console_scripts": ["baby-measure = baby_measure.app:cli"]},
     install_requires=[

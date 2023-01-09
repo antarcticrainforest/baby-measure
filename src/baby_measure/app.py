@@ -34,7 +34,18 @@ def cli() -> None:
         action="version",
         version="%(prog)s {version}".format(version=__version__),
     )
+    cli_app.add_argument(
+        "-c",
+        "--config",
+        "--configure",
+        action="store_true",
+        default=False,
+        help="Only (re)-configure the app.",
+    )
     args = cli_app.parse_args()
+    if args.config:
+        DBSettings.configure(override=True)
+        return
     run_server(debug_mode=args.debug, port=args.port)
 
 
@@ -70,15 +81,11 @@ def run_server(
                     ),
                     dcc.Tab(
                         label="Analytics",
-                        children=[
-                            dls.Hash(html.Div(id="plot", children=plot_tab))
-                        ],
+                        children=[dls.Hash(html.Div(id="plot", children=plot_tab))],
                     ),
                     dcc.Tab(
                         label="Edit Entries",
-                        children=[
-                            dls.Hash(html.Div(id="edit", children=edit_tab))
-                        ],
+                        children=[dls.Hash(html.Div(id="edit", children=edit_tab))],
                     ),
                 ]
             )

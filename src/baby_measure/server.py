@@ -26,10 +26,12 @@ from .utils import (
 )
 from .edit import Edit
 from .plot import Plot
+from .github import GHPages
 
 db_settings = DBSettings()
+gh_page = GHPages(db_settings)
+plot = Plot(db_settings, gh_page)
 edit = Edit(db_settings)
-plot = Plot(db_settings)
 app = Dash(
     "baby-measurement",
     assets_folder=Path(__file__).parent / "assets",
@@ -144,7 +146,9 @@ def log_entries(
     }
     if n_clicks > 0:
         db_settings.log_entries(entries, times)
-    return db_settings.add_entry_tab()
+    gh_page.commit()
+    tab = db_settings.add_entry_tab()
+    return tab
 
 
 @app.callback(
@@ -193,4 +197,6 @@ def edit_values(
     ]
     for (table, index, value) in tables:
         edit.alter_table(table, index, value, action)
-    return edit.children
+    children = edit.children
+    gh_page.commit()
+    return children

@@ -10,15 +10,18 @@ from dash import html, dcc
 from plotly import express as px
 import plotly
 import pandas as pd
+
 from .utils import DBSettings
+from .github import GHPages
 
 
 class Plot:
     """All plots on one page."""
 
-    def __init__(self, db_settings: DBSettings):
+    def __init__(self, db_settings: DBSettings, pages: GHPages):
 
         self.db_settings = db_settings
+        self.gh_pages = pages
 
     def read_db(self, table: str) -> pd.DataFrame:
         return self.db_settings.read_db(table)
@@ -252,14 +255,10 @@ class Plot:
         )
         return fig
 
-    def save_plots(
-        self, *figs: plotly.graph_objs._figure.Figure
-    ) -> Path | None:
-        cache_dir = Path(appdirs.user_cache_dir()) / "baby-measure"
-        out_file = cache_dir / "index.html"
-        if out_file.is_file() and (
-            time.time() - out_file.stat().st_mtime < 60
-        ):
+    def save_plots(self, *figs: plotly.graph_objs._figure.Figure) -> Path | None:
+        cache_dir = self.gh_pages.repo_dir
+        out_file = self.gh_pages.repo_dir / "index.html"
+        if out_file.is_file() and (time.time() - out_file.stat().st_mtime < 60):
             return
         header = "<html><body>"
         for fig in figs:

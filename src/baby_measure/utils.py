@@ -6,7 +6,8 @@ import logging
 from pathlib import Path
 import json
 import time
-from typing import Any
+import threading
+from typing import Any, Callable
 
 import appdirs
 from dash import html, dcc
@@ -18,6 +19,29 @@ logging.basicConfig(
     format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger("baby-meash")
+
+
+def background(
+    func: Callable[..., Any]
+) -> Callable[..., threading.Thread | None]:
+    """Threading decorator
+
+    use @background above the function you want to run in the background
+    """
+
+    def backgrund_func(*args: Any, **kwargs: Any) -> threading.Thread | None:
+        # Test coverage doesn't work very well in this multi threadded env
+        # the serial switch is mainly for unit testing purpose to run
+        # the decorated function serial.
+        serial = kwargs.pop("_serial", False)
+        if serial:
+            func(*args, **kwargs)
+            return None
+        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+        thread.start()
+        return thread
+
+    return backgrund_func
 
 
 def _utc_timestep_to_local_timestep(utc: datetime) -> datetime:
@@ -358,29 +382,69 @@ class DBSettings:
         return num_logs
 
     @staticmethod
-    def gather_config(inp_file: Path) -> dict[str, str]:
+    def gather_config(
+        inp_file: Path, defaults: dict[str, str]
+    ) -> dict[str, str]:
         """Create a new config file."""
         db_settings = dict(
-            db_host=input("DB server [localhost]: ") or "localhost",
-            db_port=input("DB port [3306]: ") or "3306",
-            db_name=input("DB name [baby_measure]: ") or "baby_measure",
-            db_user=input("DB user name [baby]: ") or "baby",
+            db_host=input(f"DB server [{defaults['db_host']}]: ").strip()
+            or defaults["db_host"],
+            db_port=input(f"DB port [{defaults['db_port']}]: ").strip()
+            or defaults["db_port"],
+            db_name=input(f"DB name [{defaults['db_name']}]: ").strip()
+            or defaults["db_name"],
+            db_user=input(f"DB user name [{defaults['db_user']}]: ").strip()
+            or defaults["db_user"],
             db_passwd=getpass("DB passwd: "),
         )
         inp_file.parent.mkdir(exist_ok=True, parents=True)
+        init_github = (
+            input(
+                "Create a GitHub Page for remote access of the visualisation? [Y|n] "
+            ).strip()
+            or "y"
+        )
+        if init_github.lower().startswith("y"):
+            db_settings.update(
+                dict(
+                    gh_token=input(
+                        f"Paste the GitHub access token: [{defaults.get('gh_token', '')}]: "
+                    ).strip()
+                    or defaults.get("gh_token"),
+                    gh_repo=input(
+                        f"GitHub repository [{defaults.get('gh_repo','baby-measure')}]: "
+                    ).strip()
+                    or defaults.get("gh_repo", "baby-measure"),
+                )
+            )
+            if not db_settings.get("gh_token"):
+                raise ValueError("You must set a GitHub access token")
+        else:
+            db_settings.update({k: None for k in ("gh_token", "gh_repo")})
         with inp_file.open("w", encoding="utf-8") as f_obj:
-            json.dump(db_settings, f_obj)
+            json.dump(db_settings, f_obj, indent=3)
+        inp_file.chmod(0o600)
         return db_settings
 
     @classmethod
-    def configure(cls) -> None:
+    def configure(cls, override=False) -> None:
         """Write/Read the database config."""
-
+        defaults = {
+            "db_host": "localhost",
+            "db_port": "3306",
+            "db_name": "baby_measure",
+            "db_user": "baby",
+        }
         db_settings_file = (
             Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
         )
         try:
             with db_settings_file.open() as f_obj:
-                cls.db_settings = json.load(f_obj)
+                settings = json.load(f_obj)
         except FileNotFoundError:
-            cls.db_settings = cls.gather_config(db_settings_file)
+            settings = cls.gather_config(db_settings_file, defaults)
+        if override:
+            defaults.update(settings)
+            settings = cls.gather_config(db_settings_file, defaults)
+        cls.db_settings = settings
+        return cls.db_settings
