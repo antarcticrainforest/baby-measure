@@ -255,12 +255,18 @@ class Plot:
         )
         return fig
 
-    def save_plots(self, *figs: plotly.graph_objs._figure.Figure) -> Path | None:
+    def save_plots(
+        self, *figs: plotly.graph_objs._figure.Figure
+    ) -> Path | None:
         cache_dir = self.gh_pages.repo_dir
         out_file = self.gh_pages.repo_dir / "index.html"
-        if out_file.is_file() and (time.time() - out_file.stat().st_mtime < 60):
+        if out_file.is_file() and (
+            time.time() - out_file.stat().st_mtime < 60
+        ):
             return
-        header = "<html><body>"
+        header = "<html><head><title>Baby Measure</title>"
+        header += '<link rel="icon" type="image/x-icon" href="favicon.ico">'
+        header += "</head><body>"
         for fig in figs:
             header += fig.to_html(full_html=False, default_height="50%")
         header += "</body></html>"
