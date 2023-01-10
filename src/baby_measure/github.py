@@ -1,9 +1,11 @@
 """Interact with github pages."""
 from __future__ import annotations
 from pathlib import Path
+from queue import Queue
 import shutil
 from tempfile import TemporaryDirectory
 import threading
+import time
 
 import appdirs
 from github import Github
@@ -23,13 +25,16 @@ class GHPages:
         self._gh_user_name = None
         self._gh_user_email = None
         self._lock = threading.Lock()
+        self._item_queue = Queue(maxsize=1)
 
         if self.use_gh_pages:
             self._init_gh_repo()
 
     @property
     def repo_dir(self):
-        return Path(appdirs.user_cache_dir()) / self._settings["gh_repo"]
+        return Path(appdirs.user_cache_dir()) / self._settings.get(
+            "db_name", "baby_measure"
+        )
 
     def _init_gh_repo(self):
         self._gh = Github(self._settings["gh_token"])
@@ -63,13 +68,16 @@ class GHPages:
         repo.git.execute(["git", "branch", "-m", "main"])
         repo.git.execute(["git", "checkout", "main"])
         repo.git.execute(["git", "push", "-f", "origin", "main"])
+        time.sleep(15)
 
     @background
     def commit(self):
-        if self.use_gh_pages:
+        if self.use_gh_pages and self._item_queue.empty():
             with self._lock:
+                self._item_queue.put("block")
                 with TemporaryDirectory() as repo_dir:
                     self._commit(Path(repo_dir))
+                _ = self._item_queue.get()
 
     @property
     def use_gh_pages(self) -> bool:

@@ -268,7 +268,7 @@ class Plot:
         header += '<link rel="icon" type="image/x-icon" href="favicon.ico">'
         header += "</head><body>"
         for fig in figs:
-            header += fig.to_html(full_html=False, default_height="50%")
+            header += fig.to_html(full_html=False)
         header += "</body></html>"
         cache_dir.mkdir(parents=True, exist_ok=True)
         with out_file.open("w", encoding="utf-8") as f_obj:
