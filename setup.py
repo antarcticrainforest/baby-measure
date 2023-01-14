@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from setuptools import setup, find_packages
 from typing import List
 
@@ -7,6 +8,15 @@ def get_assests(*parts: str) -> List[str]:
     asset_dir = Path(__file__).parent.joinpath(*parts)
     out = [str(d.relative_to(asset_dir.parent)) for d in asset_dir.rglob("*")]
     return out
+
+
+def get_version(*parts: str) -> str:
+    """Get the version from a file."""
+
+    with Path().joinpath(*parts).open() as f_obj:
+        for line in f_obj.readlines():
+            if line.startswith("__version__"):
+                return re.search(r"\d+(\.\d+)+", line, re.M).group()
 
 
 meta = dict(
@@ -26,7 +36,8 @@ meta = dict(
     classifiers=[
         "Development Status :: 1 - Planning",
         "Environment :: Console",
-        "Intended Audience :: Other Audience" "License :: Freely Distributable",
+        "Intended Audience :: Other Audience"
+        "License :: Freely Distributable",
         "Operating System :: POSIX :: Linux",
         "Natural Language :: English",
         "Topic :: System :: Logging",
@@ -38,9 +49,9 @@ meta = dict(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    version="0.1.0",
+    version=get_version("src", "baby_measure", "_version.py"),
     package_dir={"": "src"},
-    entry_points={"console_scripts": ["baby-measure = baby_measure.app:cli"]},
+    entry_points={"console_scripts": ["baby-measure = baby_measure.cli:cli"]},
     install_requires=[
         "gitpython",
         "dash",
