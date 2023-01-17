@@ -15,15 +15,11 @@ from dash_datetimepicker import DashDatetimepickerSingle
 import pandas as pd
 from sqlalchemy import create_engine
 
-logging.basicConfig(
-    format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger("baby-meash")
 
 
-def background(
-    func: Callable[..., Any]
-) -> Callable[..., threading.Thread | None]:
+def background(func: Callable[..., Any]) -> Callable[..., threading.Thread | None]:
     """Threading decorator
 
     use @background above the function you want to run in the background
@@ -72,7 +68,6 @@ def set_date_picker(id: str) -> list[DashDatetimepickerSingle, html.Button]:
                 date=datetime.now().strftime("%Y-%m-%dT%H:%M"),
                 locale="en-il",
                 utc=False,
-                locale="en-il",
             )
         ],
     )
@@ -130,17 +125,13 @@ class DBSettings:
         self._last_connection = {}
 
     def _set_db(self, table: str) -> None:
-        with create_engine(
-            self.connection, pool_recycle=3600
-        ).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
             entries = pd.read_sql(f"select * from {table}", conn)
         self._tables[table] = entries.sort_values("time")
         self._last_connection[table] = datetime.now()
 
     def alter_table(self, statement: str, table: str) -> None:
-        with create_engine(
-            self.connection, pool_recycle=3600
-        ).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
             conn.execute(statement)
         self._set_db(table)
 
@@ -154,9 +145,7 @@ class DBSettings:
         return self._tables[table]
 
     def append_db(self, table: str, data_frame: pd.DataFrame) -> None:
-        with create_engine(
-            self.connection, pool_recycle=3600
-        ).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
             data_frame.to_sql(
                 table,
                 conn,
@@ -218,15 +207,9 @@ class DBSettings:
                 "Body Measure",
                 "body",
                 [
-                    dcc.Input(
-                        type="number", placeholder="Weight [kg]", id="weight"
-                    ),
-                    dcc.Input(
-                        type="number", placeholder="Length [cm]", id="length"
-                    ),
-                    dcc.Input(
-                        type="number", placeholder="Head size [cm]", id="head"
-                    ),
+                    dcc.Input(type="number", placeholder="Weight [kg]", id="weight"),
+                    dcc.Input(type="number", placeholder="Length [cm]", id="length"),
+                    dcc.Input(type="number", placeholder="Head size [cm]", id="head"),
                 ],
                 label=self.last_entry(
                     "body",
@@ -384,9 +367,7 @@ class DBSettings:
         return num_logs
 
     @staticmethod
-    def gather_config(
-        inp_file: Path, defaults: dict[str, str]
-    ) -> dict[str, str]:
+    def gather_config(inp_file: Path, defaults: dict[str, str]) -> dict[str, str]:
         """Create a new config file."""
         db_settings = dict(
             db_host=input(f"DB server [{defaults['db_host']}]: ").strip()
