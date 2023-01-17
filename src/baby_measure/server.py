@@ -6,7 +6,9 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, cast
 
-import pandas as pd
+
+from flask import Flask
+from flask_restful import Api
 from dash import (
     ctx,
     Dash,
@@ -18,26 +20,28 @@ from dash import (
     Output,
     State,
 )
+import pandas as pd
 from .utils import (
-    logger,
     DBSettings,
+    logger,
     set_date_picker,
     str_to_timestamp,
 )
 from .edit import Edit
-from .plot import Plot
-from .github import GHPages
+from .chatbot import ChatBot
+from .server_utils import db_settings, gh_page, plot
 
-db_settings = DBSettings()
-gh_page = GHPages(db_settings)
-plot = Plot(db_settings, gh_page)
+server = Flask("baby-measurement")
 edit = Edit(db_settings)
 app = Dash(
     "baby-measurement",
+    server=server,
     assets_folder=Path(__file__).parent / "assets",
     title="Baby Measure",
 )
 app._favicon = Path(__file__).parent / "assets" / "favicon.ico"
+chatbot = Api(server)
+chatbot.add_resource(ChatBot, "/bot")
 
 
 @app.callback(

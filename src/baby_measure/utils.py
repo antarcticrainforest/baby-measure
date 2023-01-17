@@ -70,6 +70,7 @@ def set_date_picker(id: str) -> list[DashDatetimepickerSingle, html.Button]:
             DashDatetimepickerSingle(
                 id=f"{id}-timepicker-obj",
                 date=datetime.now().strftime("%Y-%m-%dT%H:%M"),
+                locale="en-il",
                 utc=False,
             )
         ],

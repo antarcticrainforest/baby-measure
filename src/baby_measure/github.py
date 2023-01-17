@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 from queue import Queue
+import requests
 import shutil
 from tempfile import TemporaryDirectory
 import threading
@@ -17,7 +18,9 @@ class GHPages:
     """Create a git hub page to display statistics on a static public
     web pages."""
 
-    def __init__(self, db_settings: DBSettings):
+    debug: bool = False
+
+    def __init__(self, db_settings: DBSettings, debug: bool = False):
 
         self._settings = db_settings.db_settings
         self._gh = None
@@ -26,8 +29,9 @@ class GHPages:
         self._gh_user_email = None
         self._lock = threading.Lock()
         self._item_queue = Queue(maxsize=1)
+        self.debug = debug
 
-        if self.use_gh_pages:
+        if self._settings.get("gh_repo", "") and not self.debug:
             self._init_gh_repo()
 
     @property
@@ -36,16 +40,27 @@ class GHPages:
             "db_name", "baby_measure"
         )
 
+    @property
+    def gh_page_url(self) -> str | None:
+        if self.use_gh_pages:
+            return f"https://{self._gh_user_name}.github.io/{self._settings['gh_repo']}"
+
     def _init_gh_repo(self):
         self._gh = Github(self._settings["gh_token"])
         gh_user = self._gh.get_user()
-        self._gh_user_name = gh_user.login or ""
-        self._gh_user_email = gh_user.email or ""
-        repos = [r.name for r in gh_user.get_repos()]
-        if self._settings["gh_repo"] not in repos:
-            print(f"Creating user repository {self._settings['gh_repo']}")
-            gh_user.create_repo(self._settings["gh_repo"])
-        self._gh_repo = gh_user.get_repo(self._settings["gh_repo"])
+        self._gh_user_name = ""
+        self._gh_user_email = ""
+        self._gh_repo = None
+        try:
+            self._gh_user_name = gh_user.login or ""
+            self._gh_user_email = gh_user.email or ""
+            repos = [r.name for r in gh_user.get_repos()]
+            if self._settings["gh_repo"] not in repos:
+                print(f"Creating user repository {self._settings['gh_repo']}")
+                gh_user.create_repo(self._settings["gh_repo"])
+            self._gh_repo = gh_user.get_repo(self._settings["gh_repo"])
+        except requests.exceptions.ConnectionError:
+            pass
 
     def _commit(self, repo_dir: Path) -> None:
         favicon = Path(__file__).parent / "assets" / "favicon.ico"
@@ -82,6 +97,8 @@ class GHPages:
     @property
     def use_gh_pages(self) -> bool:
         """Check if git hub pages should be used."""
-        if self._settings.get("gh_repo", ""):
+        if self._gh_repo is None:
+            return False
+        if self._settings.get("gh_repo", "") and not self.debug:
             return True
         return False

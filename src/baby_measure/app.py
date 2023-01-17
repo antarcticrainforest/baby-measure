@@ -23,7 +23,7 @@ def run_server(
         Additional keyword arguments
     """
     from .layout import measure_tab, plot_tab, edit_tab
-    from .server import app, DBSettings
+    from .server import app, DBSettings, gh_page, server
 
     _ = DBSettings.configure()
     app.layout = html.Div(
@@ -55,7 +55,8 @@ def run_server(
         ]
     )
     if run_server:
-        app.run_server(debug=debug_mode, port=str(port), host="0.0.0.0")
+        gh_page.debug = debug_mode
+        app.run(debug=debug_mode, port=str(port), host="0.0.0.0")
     return app
 
 

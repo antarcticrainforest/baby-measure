@@ -16,7 +16,10 @@ def get_version(*parts: str) -> str:
     with Path().joinpath(*parts).open() as f_obj:
         for line in f_obj.readlines():
             if line.startswith("__version__"):
-                return re.search(r"\d+(\.\d+)+", line, re.M).group()
+                match = re.search(r"\d+(\.\d+)+", line, re.M)
+                if match is not None:
+                    return match.group()
+    raise ValueError("Unable to find version string.")
 
 
 meta = dict(
@@ -53,15 +56,18 @@ meta = dict(
     package_dir={"": "src"},
     entry_points={"console_scripts": ["baby-measure = baby_measure.cli:cli"]},
     install_requires=[
-        "gitpython",
         "dash",
         "dash-datetimepicker",
         "dash-loading-spinners",
-        "sqlalchemy",
-        "PyGithub",
-        "pymysql",
+        "flask",
+        "flask-restful",
         "gunicorn",
+        "gitpython",
         "pandas",
+        "PyGithub",
+        "python-Levenshtein",
+        "pymysql",
+        "sqlalchemy",
     ],
     extras_require={
         "tests": [

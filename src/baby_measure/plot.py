@@ -43,6 +43,7 @@ class Plot:
             xaxis_title="",
             xaxis=dict(rangeslider=dict(visible=True)),
             dragmode="pan",
+            margin=dict(l=10, r=10, b=20),
             title="Bottle feeding",
             legend=dict(
                 font=dict(size=14),
@@ -91,6 +92,7 @@ class Plot:
             xaxis_title="",
             xaxis=dict(rangeslider=dict(visible=True)),
             dragmode="pan",
+            margin=dict(l=10, r=10, b=20),
             legend=dict(
                 font=dict(size=14),
                 yanchor="bottom",
@@ -153,6 +155,7 @@ class Plot:
             xaxis_title="",
             xaxis=dict(rangeslider=dict(visible=True)),
             dragmode="pan",
+            margin=dict(l=10, r=10, b=20),
             legend=dict(
                 font=dict(size=14),
                 yanchor="bottom",
@@ -173,7 +176,7 @@ class Plot:
         """Plot body measurment."""
         entries = self.read_db("body")
         fig = px.line(
-            entries,
+            entries[["time", prop]].dropna(),
             y=prop,
             x="time",
             markers=True,
@@ -184,6 +187,7 @@ class Plot:
             xaxis_title="",
             title=title,
             dragmode="pan",
+            margin=dict(l=10, r=10, b=20),
             xaxis=dict(rangeslider=dict(visible=True)),
         )
         return fig
@@ -239,6 +243,7 @@ class Plot:
             xaxis_title="",
             xaxis=dict(rangeslider=dict(visible=True)),
             dragmode="pan",
+            margin=dict(l=10, r=10, b=20),
             legend=dict(
                 yanchor="bottom",
                 y=1.02,
