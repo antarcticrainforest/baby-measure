@@ -39,8 +39,7 @@ meta = dict(
     classifiers=[
         "Development Status :: 1 - Planning",
         "Environment :: Console",
-        "Intended Audience :: Other Audience"
-        "License :: Freely Distributable",
+        "Intended Audience :: Other Audience" "License :: Freely Distributable",
         "Operating System :: POSIX :: Linux",
         "Natural Language :: English",
         "Topic :: System :: Logging",
@@ -65,7 +64,6 @@ meta = dict(
         "gitpython",
         "pandas",
         "PyGithub",
-        "python-Levenshtein",
         "pymysql",
         "sqlalchemy",
     ],
