@@ -72,6 +72,7 @@ def set_date_picker(id: str) -> list[DashDatetimepickerSingle, html.Button]:
                 date=datetime.now().strftime("%Y-%m-%dT%H:%M"),
                 locale="en-il",
                 utc=False,
+                locale="en-il",
             )
         ],
     )
