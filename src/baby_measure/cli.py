@@ -1,6 +1,7 @@
 """Command line interface for the baby measure app."""
 from __future__ import annotations
 import argparse
+import asyncio
 
 from .utils import DBSettings
 from ._version import __version__
@@ -41,4 +42,6 @@ def cli() -> None:
         return
     from .app import run_server
 
-    run_server(debug_mode=args.debug, port=args.port)
+    event_loop = asyncio.get_event_loop()
+    event_loop.create_task(run_server(debug_mode=args.debug, port=args.port))
+    event_loop.run_forever()

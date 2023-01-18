@@ -5,7 +5,7 @@ from dash import Dash, dcc, html
 import dash_loading_spinners as dls
 
 
-def run_server(
+async def run_server(
     debug_mode: bool = False, port: int = 8050, run_server=True, **kwargs: str
 ) -> None:
     """Set up and run the server serving the baby measurement app.
@@ -58,7 +58,3 @@ def run_server(
         gh_page.debug = debug_mode
         app.run(debug=debug_mode, port=str(port), host="0.0.0.0")
     return app
-
-
-if __name__ == "__main__":
-    cli()
