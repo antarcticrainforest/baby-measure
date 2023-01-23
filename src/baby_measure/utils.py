@@ -15,11 +15,15 @@ from dash_datetimepicker import DashDatetimepickerSingle
 import pandas as pd
 from sqlalchemy import create_engine
 
-logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logging.basicConfig(
+    format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 logger = logging.getLogger("baby-meash")
 
 
-def background(func: Callable[..., Any]) -> Callable[..., threading.Thread | None]:
+def background(
+    func: Callable[..., Any]
+) -> Callable[..., threading.Thread | None]:
     """Threading decorator
 
     use @background above the function you want to run in the background
@@ -125,13 +129,17 @@ class DBSettings:
         self._last_connection = {}
 
     def _set_db(self, table: str) -> None:
-        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+        with create_engine(
+            self.connection, pool_recycle=3600
+        ).connect() as conn:
             entries = pd.read_sql(f"select * from {table}", conn)
         self._tables[table] = entries.sort_values("time")
         self._last_connection[table] = datetime.now()
 
     def alter_table(self, statement: str, table: str) -> None:
-        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+        with create_engine(
+            self.connection, pool_recycle=3600
+        ).connect() as conn:
             conn.execute(statement)
         self._set_db(table)
 
@@ -145,7 +153,9 @@ class DBSettings:
         return self._tables[table]
 
     def append_db(self, table: str, data_frame: pd.DataFrame) -> None:
-        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+        with create_engine(
+            self.connection, pool_recycle=3600
+        ).connect() as conn:
             data_frame.to_sql(
                 table,
                 conn,
@@ -207,9 +217,15 @@ class DBSettings:
                 "Body Measure",
                 "body",
                 [
-                    dcc.Input(type="number", placeholder="Weight [kg]", id="weight"),
-                    dcc.Input(type="number", placeholder="Length [cm]", id="length"),
-                    dcc.Input(type="number", placeholder="Head size [cm]", id="head"),
+                    dcc.Input(
+                        type="number", placeholder="Weight [kg]", id="weight"
+                    ),
+                    dcc.Input(
+                        type="number", placeholder="Length [cm]", id="length"
+                    ),
+                    dcc.Input(
+                        type="number", placeholder="Head size [cm]", id="head"
+                    ),
                 ],
                 label=self.last_entry(
                     "body",
@@ -367,7 +383,9 @@ class DBSettings:
         return num_logs
 
     @staticmethod
-    def gather_config(inp_file: Path, defaults: dict[str, str]) -> dict[str, str]:
+    def gather_config(
+        inp_file: Path, defaults: dict[str, str]
+    ) -> dict[str, str]:
         """Create a new config file."""
         db_settings = dict(
             db_host=input(f"DB server [{defaults['db_host']}]: ").strip()
@@ -379,6 +397,9 @@ class DBSettings:
             db_user=input(f"DB user name [{defaults['db_user']}]: ").strip()
             or defaults["db_user"],
             db_passwd=getpass("DB passwd: "),
+            gh_token=None,
+            gh_repo=None,
+            tg_token=None,
         )
         inp_file.parent.mkdir(exist_ok=True, parents=True)
         init_github = (
@@ -402,12 +423,79 @@ class DBSettings:
             )
             if not db_settings.get("gh_token"):
                 raise ValueError("You must set a GitHub access token")
-        else:
-            db_settings.update({k: None for k in ("gh_token", "gh_repo")})
+        init_telegram = (
+            input(
+                "Use a telegram chatbot service to log and query entries? [y|N] "
+            ).strip()
+            or "n"
+        )
+        if init_telegram.lower().startswith("y"):
+            db_settings["tg_token"] = input(
+                f"Enter API token [{defaults.get('tg_token', '')}]: "
+            ).strip() or defaults.get("tg_token", "")
+            db_settings["tg_secret"] = input(
+                "Set a secret sentence you give to users to authorisation:\n"
+            ).strip() or defaults.get("tg_secret", "")
+            if not db_settings["tg_secret"]:
+                raise ValueError("You must give a secret sentence.")
         with inp_file.open("w", encoding="utf-8") as f_obj:
             json.dump(db_settings, f_obj, indent=3)
         inp_file.chmod(0o600)
         return db_settings
+
+    @classmethod
+    def create_tables(
+        cls,
+        db_host: str,
+        db_port: str,
+        db_name: str,
+        db_user: str,
+        db_passwd: str,
+    ) -> None:
+        conn = "mysql+pymysql://{user}:{passwd}@{host}/{db}".format(
+            user=db_user,
+            passwd=db_passwd,
+            host=db_host,
+            db=db_name,
+        )
+
+        tables = (
+            (
+                "CREATE TABLE IF NOT EXISTS `body` ( `id` BIGINT(20) UNSIGNED NOT NULL, "
+                "`time` TIMESTAMP NOT NULL, `height` FLOAT(10,3), `weight` "
+                "FLOAT(10,3), `head` FLOAT(10,3), PRIMARY KEY (`id`) );"
+            ),
+            (
+                "CREATE TABLE IF NOT EXISTS `nappie` ( `id` BIGINT(20) "
+                "UNSIGNED NOT NULL, `time` TIMESTAMP NOT NULL, `type` "
+                'ENUM("pee", "poop") NOT NULL, PRIMARY KEY (`id`) );'
+            ),
+            (
+                "CREATE TABLE IF NOT EXISTS `breastfeeding` ( `id` BIGINT(20) "
+                "UNSIGNED NOT NULL, `time` TIMESTAMP NOT NULL, `duration` "
+                "BIGINT(20) UNSIGNED NOT NULL, PRIMARY KEY (`id`) );"
+            ),
+            (
+                "CREATE TABLE IF NOT EXISTS `mamadera` ( `id` BIGINT(20) "
+                "UNSIGNED NOT NULL, `time` TIMESTAMP NOT NULL, `amount` "
+                "BIGINT(20) UNSIGNED NOT NULL, `type` "
+                'ENUM("breastmilk", "formula") NOT NULL, PRIMARY KEY (`id`) );'
+            ),
+            (
+                "CREATE TABLE IF NOT EXISTS `telebot` (`id` BIGINT(20) "
+                "UNSIGNED NOT NULL AUTO_INCREMENT, "
+                "`user_id` BIGINT(20) NOT NULL, "
+                "`first_name` varchar(255), "
+                "`last_name` varchar(255), "
+                "`login_attempts` int, "
+                "`time` TIMESTAMP, "
+                "`allowed` BOOLEAN not null default 0, "
+                "PRIMARY KEY (`id`) );"
+            ),
+        )
+        with create_engine(conn, pool_recycle=3600).connect() as db_conn:
+            for statement in tables:
+                db_conn.execute(statement)
 
     @classmethod
     def configure(cls, override=False) -> None:
@@ -430,4 +518,11 @@ class DBSettings:
             defaults.update(settings)
             settings = cls.gather_config(db_settings_file, defaults)
         cls.db_settings = settings
+        cls.create_tables(
+            settings["db_host"],
+            settings["db_port"],
+            settings["db_name"],
+            settings["db_user"],
+            settings["db_passwd"],
+        )
         return cls.db_settings
