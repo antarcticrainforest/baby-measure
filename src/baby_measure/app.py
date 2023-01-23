@@ -9,33 +9,7 @@ from typing import Any, Callable
 from dash import Dash, dcc, html
 import dash_loading_spinners as dls
 
-from .utils import background, DBSettings
-
-
-class ThreadedEventLoop(threading.Thread):
-    def __init__(self):
-        super().__init__()
-        self._loop = asyncio.new_event_loop()
-        self.daemon = True
-
-    async def exec_subscription(
-        self, callback: Callable, *args, **kwargs
-    ) -> None:
-        callback(*args, **kwargs)
-
-    async def schedule_subscription_task(
-        self, callback: Callable, *args: Any, **kwargs: Any
-    ):
-        await self.exec_subscription(callback, *args, **kwargs)
-
-    def submit(self, callback, *args: Any, **kwargs: Any):
-        asyncio.run_coroutine_threadsafe(
-            self.schedule_subscription_task(callback, *args, **kwargs),
-            self._loop,
-        )
-
-    def run(self) -> None:
-        self._loop.run_forever()
+from .utils import DBSettings
 
 
 def run_flask_server(
