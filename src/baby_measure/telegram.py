@@ -40,9 +40,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
     def url(self) -> str:
         return f"http://localhost:{self.port}/bot"
 
-    async def get_or_add(
-        self, user_id: str, last_name: str, first_name: str
-    ) -> dict:
+    async def get_or_add(self, user_id: str, last_name: str, first_name: str) -> dict:
         with create_engine(db_settings.connection).connect() as conn:
             table = pd.read_sql(
                 f"select * from telebot where user_id = {user_id}", conn
@@ -79,9 +77,8 @@ class Telegram(telepot.aio.helper.ChatHandler):
         last_name = msg["from"].get("last_name", "")
         first_name = msg["from"].get("first_name", "")
         table = await self.get_or_add(user_id, last_name, first_name)
-        send_time = msg["date"] - time.time()
         in_text = msg["text"]
-        if msg["from"]["is_bot"] or send_time > 300:
+        if msg["from"]["is_bot"]:
             return
         attempts = table["login_attempts"]
         secret = db_settings.db_settings["tg_secret"]
@@ -140,13 +137,9 @@ class Telegram(telepot.aio.helper.ChatHandler):
                 add_items.append(f"{table[k]}")
         update = ", ".join(alter_items)
         with create_engine(db_settings.connection).connect() as conn:
-            exists = conn.execute(
-                f"select * from telebot where user_id = {uid}"
-            )
+            exists = conn.execute(f"select * from telebot where user_id = {uid}")
             if len(exists.all()) > 0:
-                conn.execute(
-                    f"update telebot set {update} where user_id = {uid}"
-                )
+                conn.execute(f"update telebot set {update} where user_id = {uid}")
             else:
                 conn.execute(
                     f"insert into telebot ({', '.join(keys)}) "
@@ -154,9 +147,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
                 )
 
     async def on_callback_query(self, msg):
-        query_id, from_id, query_data = telepot.glance(
-            msg, flavor="callback_query"
-        )
+        query_id, from_id, query_data = telepot.glance(msg, flavor="callback_query")
         print("Callback Query:", query_id, from_id, query_data)
 
         text = await self._get_response(msg)
@@ -178,9 +169,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
         print(msg)
 
         def compute():
-            query_id, from_id, query_string = telepot.glance(
-                msg, flavor="inline_query"
-            )
+            query_id, from_id, query_string = telepot.glance(msg, flavor="inline_query")
             print("Inline Query:", query_id, from_id, query_string)
 
             articles = [
