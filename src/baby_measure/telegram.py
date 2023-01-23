@@ -138,7 +138,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
         update = ", ".join(alter_items)
         with create_engine(db_settings.connection).connect() as conn:
             exists = conn.execute(f"select * from telebot where user_id = {uid}")
-            if len(exists.all()) > 0:
+            if hasattr(exists, "all") and len(exists.all()) > 0:
                 conn.execute(f"update telebot set {update} where user_id = {uid}")
             else:
                 conn.execute(
