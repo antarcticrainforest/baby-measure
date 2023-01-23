@@ -1,6 +1,7 @@
 """Command line interface for the baby measure app."""
 from __future__ import annotations
 import argparse
+import multiprocessing as mp
 
 from .utils import DBSettings
 from ._version import __version__
@@ -49,7 +50,8 @@ def cli() -> None:
         return
     from .app import run_flask_server, run_telegram
 
-    if args.telegram:
-        run_telegram("", args.port)
-    else:
-        run_flask_server(debug_mode=args.debug, port=args.port)
+    token = DBSettings.configure().get("tg_token")
+    if token:
+        tele_g = mp.Process(target=run_telegram, args=(token, args.port))
+        tele_g.start()
+    run_flask_server(debug_mode=args.debug, port=args.port)

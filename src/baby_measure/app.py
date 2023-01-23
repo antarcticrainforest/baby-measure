@@ -2,7 +2,6 @@
 from __future__ import annotations
 import asyncio
 import threading
-import multiprocessing as mp
 from typing import Any, Callable
 
 
@@ -12,9 +11,7 @@ import dash_loading_spinners as dls
 from .utils import DBSettings
 
 
-def run_flask_server(
-    debug_mode: bool = False, port: int = 5080, **kwargs: str
-) -> None:
+def run_flask_server(debug_mode: bool = False, port: int = 5080, **kwargs: str) -> None:
     """Set up and run the flask server serving the baby measurement app.
 
     This server will serve a dash app running on localhost. Currently only
@@ -46,15 +43,11 @@ def run_flask_server(
                     ),
                     dcc.Tab(
                         label="Analytics",
-                        children=[
-                            dls.Hash(html.Div(id="plot", children=plot_tab))
-                        ],
+                        children=[dls.Hash(html.Div(id="plot", children=plot_tab))],
                     ),
                     dcc.Tab(
                         label="Edit Entries",
-                        children=[
-                            dls.Hash(html.Div(id="edit", children=edit_tab))
-                        ],
+                        children=[dls.Hash(html.Div(id="edit", children=edit_tab))],
                     ),
                 ]
             )
@@ -68,8 +61,6 @@ def run_telegram(token: str, port: int = 8050):
     from telepot.aio.loop import MessageLoop
     from .telegram import Telegram
 
-    if not token:
-        token = DBSettings.configure().get("tg_token")
     loop = asyncio.get_event_loop()
     bot = Telegram.bot_from_token(token, port=port)
     loop.create_task(MessageLoop(bot).run_forever())
