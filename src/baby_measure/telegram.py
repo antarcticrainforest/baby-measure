@@ -113,7 +113,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
             else:
                 text = "Great! You can now send me commands or ask questions."
                 table["allowed"] = int(True)
-        if not table["allowed"]:
+        if not bool(table["allowed"]) is False:
             table["login_attempts"] += 1
         await self._update_user(user_id, table)
         return text
@@ -138,7 +138,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
         update = ", ".join(alter_items)
         with create_engine(db_settings.connection).connect() as conn:
             exists = conn.execute(f"select * from telebot where user_id = {uid}")
-            if hasattr(exists, "all") and len(exists.all()) > 0:
+            if len(exists.fetchall()) > 0:
                 conn.execute(f"update telebot set {update} where user_id = {uid}")
             else:
                 conn.execute(
