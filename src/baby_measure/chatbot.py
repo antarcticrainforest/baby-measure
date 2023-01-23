@@ -146,8 +146,12 @@ class ChatBot(Resource):
         total_amount_fig = self.plot.amount
         daily_amount_fig = self.plot.daily_amount
         breastfeeding_fig = self.plot.breastfeeding
-        weight_fig = self.plot.plot_body("weight", "Weight [km]", "Body Weight")
-        height_fig = self.plot.plot_body("height", "Height [cm]", "Body Height")
+        weight_fig = self.plot.plot_body(
+            "weight", "Weight [km]", "Body Weight"
+        )
+        height_fig = self.plot.plot_body(
+            "height", "Height [cm]", "Body Height"
+        )
         head_fig = self.plot.plot_body("head", "Size [cm]", "Head Size")
         nappy_fig = self.plot.nappy
         self.plot.save_plots(
@@ -257,10 +261,9 @@ class ChatBot(Resource):
         elif table == "breastfeeding":
             content = ""
         if content and table != "body":
-            for column in entries.columns:
-                subset = entries.loc[entries[column] == content]
-                if len(subset):
-                    entries = subset
+            subset = entries.loc[entries["type"] == content]
+            if len(subset):
+                entries = subset
         if isinstance(when, datetime):
             diff = pd.DatetimeIndex(entries["time"]) - when
             idx = np.argmin(np.fabs(diff.total_seconds()))
@@ -271,8 +274,14 @@ class ChatBot(Resource):
         time = last["time"].strftime("%a %_d. %b %R")
         if table == "body":
             return f"Measures from {time}:\n{last[['weight', 'height', 'head']].to_string()}"
-        daily = entries.groupby(pd.Grouper(freq="1D")).sum(numeric_only=True).loc[day]
-        amount_key = [c for c in last.keys() if c not in ("id", "uid", "time")][0]
+        daily = (
+            entries.groupby(pd.Grouper(freq="1D"))
+            .sum(numeric_only=True)
+            .loc[day]
+        )
+        amount_key = [
+            c for c in last.keys() if c not in ("id", "uid", "time")
+        ][0]
         try:
             amount = float(last[amount_key])
             daily_amount = float(daily[amount_key])
@@ -280,13 +289,13 @@ class ChatBot(Resource):
                 daily_values = ""
             else:
                 daily_values = f" (sum that day: {daily_amount})"
-            return f"The {content} amount from {time} was {amount} {daily_values}"
+            return (
+                f"The {content} amount from {time} was {amount} {daily_values}"
+            )
         except ValueError:
             amount = last[amount_key]
             daily_values = int(daily["count"])
-        return (
-            f"On {time} the nappy content was {amount} (total: {daily_values} nappies)"
-        )
+        return f"On {time} the nappy content was {amount} (total: {daily_values} nappies)"
 
     def _process_text(self, text: str):
         """Extract the instructions from a text."""
