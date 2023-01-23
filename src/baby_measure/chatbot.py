@@ -236,7 +236,7 @@ class ChatBot(Resource):
                 ctype = "pee"
             df = pd.DataFrame({"id": [idx], "time": [time], "type": [ctype]})
 
-        # self.append_db(table_name, df)
+        self.append_db(table, df)
         self._save_and_commit()
         columns = [c for c in df.columns if c != "id"]
         df["time"] = df["time"].dt.strftime("%a %_d. %b %R")
