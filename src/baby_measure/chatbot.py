@@ -281,7 +281,7 @@ class ChatBot(Resource):
         elif table == "breastfeeding":
             content = " "
             amount_name = "duration"
-        if content and table != "body":
+        if content.strip() and table != "body":
             subset = entries.loc[entries["type"] == content]
             if len(subset):
                 entries = subset
