@@ -104,7 +104,7 @@ class ChatBot(Resource):
         content: str = ""
         amount: float | None = None
         dates: datetime | str | None = None
-        mamadera_markers = [k for (k, v) in table_types.items() if v == "mamadera"]
+        mamadera_markers = [k for (k, v) in self.table_types.items() if v == "mamadera"]
         for word in words:
 
             if word in self.action_instruction and not instruction:
@@ -144,7 +144,6 @@ class ChatBot(Resource):
         ):
             if table != "mamadera":
                 table = "breastfeeding"
-        if word 
         if "feeding" in words and "milk" in words:
             table = "mamadera"
             content = "breastmilk"
