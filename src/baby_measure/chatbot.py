@@ -269,53 +269,81 @@ class ChatBot(Resource):
             )
         return out
 
+    @staticmethod
+    def _get_body_measure(table: pd.DataFrame) -> str:
+        time = table["time"].strftime("%a %_d. %b %R")
+        return f"Measures from {time}:\n{table[['weight', 'height', 'head']].to_string()}"
+
+    @staticmethod
+    def _get_nappy_text(last: pd.DataFrame, table: pd.DataFrame) -> str:
+
+        time = last["time"].strftime("%a %_d. %b %R")
+        day = pd.DatetimeIndex([last["time"].date()])
+        count = int(
+            table.groupby(pd.Grouper(freq="1D")).count().loc[day]["type"]
+        )
+        content = str(last["type"])
+        return (
+            f"On {time} the nappy content was {content} "
+            f"(with a total of {count} nappies that day)"
+        )
+
+    @staticmethod
+    def _get_feeding_text(
+        last: pd.DataFrame, table: pd.DataFrame, content: str | None
+    ) -> str:
+
+        time = last["time"].strftime("%a %_d. %b %R")
+        day = pd.DatetimeIndex([last["time"].date()])
+        content = content or ""
+        if content:
+            daily_sum = float(
+                table.loc[table["type"] == content]["amount"]
+                .groupby(pd.Grouper(freq="1D"))
+                .sum()
+                .loc[day]
+            )
+            this_time = float(last["amount"])
+            content = f"{content} "
+            amount = "amount"
+        else:
+            daily_sum = float(
+                table["duration"].groupby(pd.Grouper(freq="1D")).sum().loc[day]
+            )
+            this_time = float(last["duration"])
+            amount = "duration"
+        daily_values = f"(total that day: {daily_sum})"
+        return (
+            f"The {content}{amount} from {time} was {this_time} {daily_values}"
+        )
+
     def _read_db(self, content: str, when: datetime | str, table: str) -> str:
         if not table:
             return "I could not retrieve the information from the database"
-        key = "type"
         entries = self.db_settings.read_db(table)
         entries = entries.set_index(pd.DatetimeIndex(entries["time"].values))
-        amount_name = "amount"
         if table == "mamadera" and content != "formula":
             content = "breastmilk"
         elif table == "breastfeeding":
-            content = " "
-            amount_name = "duration"
+            content = ""
         if content.strip() and table != "body":
             subset = entries.loc[entries["type"] == content]
-            if len(subset):
-                entries = subset
+            if not len(subset):
+                subset = entries
+        else:
+            subset = entries
         if isinstance(when, datetime):
             diff = pd.DatetimeIndex(entries["time"]) - when
             idx = np.argmin(np.fabs(diff.total_seconds()))
-            last = entries.iloc[idx]
         else:
-            last = entries.iloc[-1]
-        day = pd.DatetimeIndex([last["time"].date()])
-        time = last["time"].strftime("%a %_d. %b %R")
+            idx = -1
         if table == "body":
-            return f"Measures from {time}:\n{last[['weight', 'height', 'head']].to_string()}"
-        daily = (
-            entries.groupby(pd.Grouper(freq="1D"))
-            .sum(numeric_only=True)
-            .loc[day]
-        )
-        amount_key = [
-            c for c in last.keys() if c not in ("id", "uid", "time")
-        ][0]
-        daily_values = ""
-        try:
-            amount = float(last[amount_key])
-            daily_amount = float(daily[amount_key])
-            if daily_amount == amount:
-                daily_values = ""
-            else:
-                daily_values = f" (sum that day: {daily_amount})"
-            return f"The {content}{amount_name} from {time} was {amount} {daily_values}"
-        except ValueError:
-            amount = last[amount_key]
-            daily_values = int(daily["count"])
-        return f"On {time} the nappy content was {amount} (total: {daily_values} nappies)"
+            text = self._get_body_measure(subset.iloc[idx])
+        elif table == "nappie":
+            text = self._get_nappy_text(subset.iloc[idx], entries)
+        else:
+            text = self._get_feeding_text(subset.iloc[idx], entries, content)
+        return text
 
     def _process_text(self, text: str):
         """Extract the instructions from a text."""
