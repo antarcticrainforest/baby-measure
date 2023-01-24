@@ -69,7 +69,7 @@ class ChatBot(Resource):
         "daiper": "nappie",
         "formula": "mamadera",
         "milk": "mamadera",
-        "nursing": "leche",
+        "nursing": "breastfeeding",
         "breastmilk": "mamadera",
         "poop": "nappie",
         "poo": "nappie",
@@ -84,6 +84,7 @@ class ChatBot(Resource):
         "light": "body",
         "tall": "body",
         "small": "body",
+        "bottle": "mamadera",
     }
 
     def _split_text(self, text: str) -> list[str]:
@@ -103,17 +104,22 @@ class ChatBot(Resource):
         content: str = ""
         amount: float | None = None
         dates: datetime | str | None = None
+        mamadera_markers = [k for (k, v) in table_types.items() if v == "mamadera"]
         for word in words:
 
             if word in self.action_instruction and not instruction:
                 instruction = self.action_instruction[word]
+            elif word in mamadera_markers and not table:
+                table = "mamadera"
+                content = word
             elif word in self.table_types and not table:
                 table = self.table_types[word]
                 content = word
-            try:
-                amount = float(word)
-            except ValueError:
-                pass
+            if amount is None:
+                try:
+                    amount = float(word)
+                except ValueError:
+                    pass
             if dates is None:
                 try:
                     dates = pd.Timestamp(word).to_pydatetime()
@@ -136,7 +142,12 @@ class ChatBot(Resource):
             or "feeding" in words
             or "breastfeeding" in words
         ):
-            table = "breastfeeding"
+            if table != "mamadera":
+                table = "breastfeeding"
+        if word 
+        if "feeding" in words and "milk" in words:
+            table = "mamadera"
+            content = "breastmilk"
 
         return Instructions(
             instruction=instruction,
