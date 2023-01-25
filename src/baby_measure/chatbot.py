@@ -2,6 +2,7 @@
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
+import re
 import string
 from tempfile import TemporaryDirectory
 from typing import NamedTuple, Union
@@ -87,8 +88,9 @@ class ChatBot(Resource):
         "bottle": "mamadera",
     }
 
-    def _split_text(self, text: str) -> list[str]:
+    def _split_text(self, text: str) -> tuple[list[str], datetime | None]:
 
+        date, text = self._extract_datetime(text)
         text_words = [t for t in text.split() if t.strip()]
         punctuations = string.punctuation.strip("-").strip(":")
         out_words = []
@@ -97,13 +99,49 @@ class ChatBot(Resource):
                 word = word.strip(punctuation)
             if word not in self.greetings:
                 out_words.append(word)
-        return out_words
+        return out_words, date
 
-    def _extract_instruction(self, words: list[str]) -> Instructions:
+    def _extract_datetime(self, txt: str) -> tuple[datetime | None, str]:
+        """Use a regex pattern to extract a datetime."""
+        date_regex = (
+            r"(\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{1,4}[./-]\d{1,2}[./-]\d{2})"
+        )
+        month_regex = r"(\d{1,2}[./-]\d{2})"
+        time_regex = r"([01]?[0-9]|2[0-3]):[0-5][0-9]"
+        date_search = re.search(date_regex, txt)
+        time_search = re.search(time_regex, txt)
+        month_search = re.search(month_regex, txt)
+        if date_search:
+            date_string = date_search.group()
+            txt = txt.replace(date_string, "")
+        else:
+            if month_search:
+                month_string = (
+                    month_search.group().replace(".", "-").replace("/", "-")
+                )
+                date_string = f"{datetime.now().strftime('%Y')}-{month_string}"
+            else:
+                date_string = ""
+        if time_search:
+            time_string = time_search.group()
+            if not date_string:
+                date_string = datetime.now().strftime("%Y-%m-%d")
+            txt = txt.replace(time_string, "")
+            date_string += f"T{time_string}"
+        date = None
+        if date_string:
+            try:
+                date = pd.Timestamp(date_string).to_pydatetime()
+            except (ValueError, TypeError):
+                pass
+        return date, txt
+
+    def _extract_instruction(
+        self, words: list[str], dates: datetime | None
+    ) -> Instructions:
         instruction, table = "", ""
         content: str = ""
         amount: float | None = None
-        dates: datetime | str | None = None
         mamadera_markers = [
             k for (k, v) in self.table_types.items() if v == "mamadera"
         ]
@@ -120,11 +158,6 @@ class ChatBot(Resource):
             if amount is None:
                 try:
                     amount = float(word)
-                except ValueError:
-                    pass
-            if dates is None:
-                try:
-                    dates = pd.Timestamp(word).to_pydatetime()
                 except ValueError:
                     pass
         if table == "nappie":
@@ -347,10 +380,9 @@ class ChatBot(Resource):
 
     def _process_text(self, text: str):
         """Extract the instructions from a text."""
-        word_list = self._split_text(text.lower())
-        instruction = self._extract_instruction(word_list)
+        word_list, date = self._split_text(text.lower())
+        instruction = self._extract_instruction(word_list, date)
         inst = instruction.instruction
-        print(instruction)
         if not inst:
             inst = "get"
         if not instruction.table:
