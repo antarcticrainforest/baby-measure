@@ -173,7 +173,6 @@ class ChatBot(Resource):
                 date = pd.Timestamp(date_string).to_pydatetime()
             except (ValueError, TypeError):
                 pass
-        print(date, txt)
         return date, txt
 
     def _extract_instruction(
@@ -208,7 +207,7 @@ class ChatBot(Resource):
             else:
                 content = ""
             amount = None
-        if "last" in words:
+        if "last" in words dates is None:
             dates = "last"
         if (
             "long" in words
@@ -408,7 +407,6 @@ class ChatBot(Resource):
         if isinstance(when, datetime):
             diff = (pd.DatetimeIndex(subset["time"]) - when).total_seconds()
             idx = np.where(diff > 0, diff, np.inf).argmin()
-            print(idx)
         else:
             idx = -1
         subset = subset.iloc[idx]
