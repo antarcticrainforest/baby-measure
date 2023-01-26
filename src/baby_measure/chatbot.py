@@ -207,7 +207,7 @@ class ChatBot(Resource):
             else:
                 content = ""
             amount = None
-        if "last" in words dates is None:
+        if "last" in words and dates is None:
             dates = "last"
         if (
             "long" in words
