@@ -434,7 +434,7 @@ class ChatBot(Resource):
     def _process_text(self, text: str):
         """Extract the instructions from a text."""
         word_list, date = self._split_text(text.lower())
-        if "uptime" or "online" in word_list:
+        if "uptime" in word_list or "online" in word_list:
             return self._uptime
         instruction = self._extract_instruction(word_list, date)
         inst = instruction.instruction
