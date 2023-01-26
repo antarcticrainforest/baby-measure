@@ -406,14 +406,12 @@ class ChatBot(Resource):
         else:
             subset = entries
         if isinstance(when, datetime):
-            diff = pd.DatetimeIndex(subset["time"]) - when
-            idx = np.argmin(np.fabs(diff.total_seconds()))
+            diff = (pd.DatetimeIndex(subset["time"]) - when).total_seconds()
+            idx = np.where(diff > 0, diff, np.inf).argmin()
+            print(idx)
         else:
             idx = -1
-        try:
-            subset = subset.iloc[idx]
-        except ValueError:
-            subset = subset.iloc[-1]
+        subset = subset.iloc[idx]
         if table == "body":
             text = self._get_body_measure(subset)
         elif table == "nappie":
