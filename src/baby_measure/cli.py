@@ -37,12 +37,13 @@ def cli() -> None:
         help="Only (re)-configure the app.",
     )
     cli_app.add_argument(
-        "-t",
-        "--telegram",
-        "--telegram-bot",
-        action="store_true",
-        default=False,
-        help="Run only the telegram chat-bot",
+        "-s",
+        "--services",
+        nargs="+",
+        type=str,
+        default=["web", "telegram"],
+        choices=["web", "telegram", "sms"],
+        help="Set the services you want to run.",
     )
     args = cli_app.parse_args()
     if args.config:
@@ -51,7 +52,13 @@ def cli() -> None:
     from .app import run_flask_server, run_telegram
 
     token = DBSettings.configure().get("tg_token")
-    if token:
-        tele_g = mp.Process(target=run_telegram, args=(token, args.port))
-        tele_g.start()
-    run_flask_server(debug_mode=args.debug, port=args.port)
+    background_proc = []
+    if token and "telegram" in args.services:
+        background_proc.append(
+            mp.Process(target=run_telegram, args=(token, args.port))
+        )
+        background_proc[-1].start()
+    if "web" in args.services:
+        run_flask_server(debug_mode=args.debug, port=args.port)
+    for proc in background_proc:
+        proc.join()

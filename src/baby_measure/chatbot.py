@@ -1,9 +1,10 @@
 """Interface for a chatbot."""
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import re
 import string
+import subprocess
 from tempfile import TemporaryDirectory
 from typing import NamedTuple, Union
 
@@ -101,6 +102,35 @@ class ChatBot(Resource):
                 out_words.append(word)
         return out_words, date
 
+    def _check_for_weekdays(self, txt: str) -> tuple[str, str]:
+
+        weekdays = {
+            "monday": "mon",
+            "tuesday": "tue",
+            "wednesday": "wed",
+            "thursday": "thur",
+            "friday": "fri",
+            "saturday": "sat",
+            "sunday": "sun",
+        }
+        words = txt.split()
+        for long_w, short_w in weekdays.items():
+            if short_w not in txt and long_w not in txt:
+                continue
+            if short_w in words:
+                break_word = short_w
+                txt = txt.replace(short_w, "")
+            else:
+                break_word = weekdays[long_w]
+                txt = txt.replace(long_w, "")
+            ndays = 1
+            while True:
+                last_day = datetime.now() - timedelta(hours=ndays * 24)
+                if last_day.strftime("%a").lower() == break_word:
+                    return last_day.strftime("%Y-%m-%d"), txt
+                ndays += 1
+        return "", txt
+
     def _extract_datetime(self, txt: str) -> tuple[datetime | None, str]:
         """Use a regex pattern to extract a datetime."""
         date_regex = (
@@ -111,10 +141,19 @@ class ChatBot(Resource):
         date_search = re.search(date_regex, txt)
         time_search = re.search(time_regex, txt)
         month_search = re.search(month_regex, txt)
-        if date_search:
+        date_string, txt = self._check_for_weekdays(txt)
+        if "the day before yesterday" in txt:
+            old = datetime.now() - timedelta(days=2)
+            date_string = f"{old.year}-{old.month}-{old.day}"
+            txt = txt.replace("the day before yesterday")
+        elif "yesterday" in txt:
+            old = datetime.now() - timedelta(days=1)
+            date_string = f"{old.year}-{old.month}-{old.day}"
+            txt = txt.replace("yesterday")
+        elif date_search:
             date_string = date_search.group()
             txt = txt.replace(date_string, "")
-        else:
+        elif not date_string:
             if month_search:
                 month_string = (
                     month_search.group().replace(".", "-").replace("/", "-")
@@ -134,6 +173,7 @@ class ChatBot(Resource):
                 date = pd.Timestamp(date_string).to_pydatetime()
             except (ValueError, TypeError):
                 pass
+        print(date, txt)
         return date, txt
 
     def _extract_instruction(
@@ -366,7 +406,7 @@ class ChatBot(Resource):
         else:
             subset = entries
         if isinstance(when, datetime):
-            diff = pd.DatetimeIndex(entries["time"]) - when
+            diff = pd.DatetimeIndex(subset["time"]) - when
             idx = np.argmin(np.fabs(diff.total_seconds()))
         else:
             idx = -1
@@ -378,9 +418,24 @@ class ChatBot(Resource):
             text = self._get_feeding_text(subset.iloc[idx], entries, content)
         return text
 
+    @property
+    def _uptime(self) -> str:
+        try:
+            res = subprocess.run(
+                ["uptime"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return "I can't get you this information."
+        return res.stdout.decode()
+
     def _process_text(self, text: str):
         """Extract the instructions from a text."""
         word_list, date = self._split_text(text.lower())
+        if "uptime" or "online" in word_list:
+            return self._uptime
         instruction = self._extract_instruction(word_list, date)
         inst = instruction.instruction
         if not inst:
