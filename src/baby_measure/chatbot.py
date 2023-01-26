@@ -410,12 +410,16 @@ class ChatBot(Resource):
             idx = np.argmin(np.fabs(diff.total_seconds()))
         else:
             idx = -1
+        try:
+            subset = subset.iloc[idx]
+        except ValueError:
+            subset = subset.iloc[-1]
         if table == "body":
-            text = self._get_body_measure(subset.iloc[idx])
+            text = self._get_body_measure(subset)
         elif table == "nappie":
-            text = self._get_nappy_text(subset.iloc[idx], entries)
+            text = self._get_nappy_text(subset, entries)
         else:
-            text = self._get_feeding_text(subset.iloc[idx], entries, content)
+            text = self._get_feeding_text(subset, entries, content)
         return text
 
     @property
