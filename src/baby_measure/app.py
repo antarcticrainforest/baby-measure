@@ -1,14 +1,13 @@
 """Server app running the baby measurments."""
 from __future__ import annotations
 import asyncio
-import threading
 from typing import Any, Callable
 
 
 from dash import Dash, dcc, html
 import dash_loading_spinners as dls
 
-from .utils import DBSettings
+from .utils import DBSettings, logger
 
 
 def run_flask_server(debug_mode: bool = False, port: int = 5080, **kwargs: str) -> None:
@@ -63,8 +62,12 @@ def run_telegram(token: str, port: int = 8050):
 
     loop = asyncio.get_event_loop()
     bot = Telegram.bot_from_token(token, port=port)
-    loop.create_task(MessageLoop(bot).run_forever())
-    loop.run_forever()
+    while True:
+        try:
+            loop.create_task(MessageLoop(bot).run_forever())
+            loop.run_forever()
+        except Exception as error:
+            logger.error(error)
 
 
 def run_server(
