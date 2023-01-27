@@ -68,12 +68,8 @@ def run_telegram(token: str, port: int = 8050):
 
     loop = asyncio.get_event_loop()
     bot = Telegram.bot_from_token(token, port=port)
-    # while True:
-    try:
-        loop.create_task(MessageLoop(bot).run_forever())
-        loop.run_forever()
-    except Exception as error:
-        logger.error(error)
+    loop.create_task(MessageLoop(bot).run_forever())
+    loop.run_forever()
 
 
 def run_server(

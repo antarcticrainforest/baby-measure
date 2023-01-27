@@ -34,7 +34,6 @@ class Telegram(telepot.aio.helper.ChatHandler):
         self.port = port
         self._count = 0
         # self.answerer = telepot.aio.helper.Answerer(bot)
-        print(self.url)
 
     @property
     def url(self) -> str:
@@ -68,6 +67,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
 
     async def on_chat_message(self, msg) -> None:
         text = await self._get_response(msg)
+
         if text is not None:
             await self.sender.sendMessage(text)
 
@@ -166,7 +166,6 @@ class Telegram(telepot.aio.helper.ChatHandler):
         )
 
     async def on_inline_query(self, msg):
-        print(msg)
 
         def compute():
             query_id, from_id, query_string = telepot.glance(msg, flavor="inline_query")

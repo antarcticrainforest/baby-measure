@@ -67,7 +67,7 @@ meta = dict(
         "PyGithub",
         "pymysql",
         "sqlalchemy",
-        "telepot",
+        "telepot @ git+https://github.com/FoRKsH/telepot.git"
     ],
     extras_require={
         "tests": [
