@@ -33,7 +33,12 @@ class Telegram(telepot.aio.helper.ChatHandler):
         super(Telegram, self).__init__(bot, *args, **kwargs)
         self.port = port
         self._count = 0
-        # self.answerer = telepot.aio.helper.Answerer(bot)
+        self.answerer = telepot.aio.helper.Answerer(bot)
+
+    @property
+    async def me(self) -> str:
+        """Get info about the bot."""
+        return await self.bot.getMe()
 
     @property
     def url(self) -> str:
@@ -67,7 +72,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
 
     async def on_chat_message(self, msg) -> None:
         text = await self._get_response(msg)
-
+        
         if text is not None:
             await self.sender.sendMessage(text)
 
@@ -78,8 +83,13 @@ class Telegram(telepot.aio.helper.ChatHandler):
         first_name = msg["from"].get("first_name", "")
         table = await self.get_or_add(user_id, last_name, first_name)
         in_text = msg["text"]
+        me = await self.me
+        my_name = f"@{me['username']}"
         if msg["from"]["is_bot"]:
             return
+        if msg["chat"].get("type", "chat") == "group" and not in_text.startswith(my_name):
+            return
+        in_text = in_text.strip(my_name)
         attempts = table["login_attempts"]
         secret = db_settings.db_settings["tg_secret"]
         text = "Got it!"
@@ -166,7 +176,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
         )
 
     async def on_inline_query(self, msg):
-
+        print(msg)
         def compute():
             query_id, from_id, query_string = telepot.glance(msg, flavor="inline_query")
             print("Inline Query:", query_id, from_id, query_string)
