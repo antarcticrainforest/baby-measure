@@ -66,6 +66,10 @@ class Plot:
         datetimes = pd.DatetimeIndex(times).sort_values()
         dt = datetime.now() - datetimes
         times = datetimes[dt <= pd.Timedelta(days=10)]
+        if len(times) == 0:
+            return datetimes[0], datetimes[-1]
+        if len(times) == 1:
+            return max(datetimes[0], times[0]), min(datetimes[-1], times[0])
         return [
             times[0] - pd.Timedelta(hours=12),
             times[-1] + pd.Timedelta(hours=12),
