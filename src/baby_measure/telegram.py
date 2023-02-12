@@ -77,8 +77,8 @@ class Telegram(telepot.aio.helper.ChatHandler):
         img, text = await self._get_response(msg)
         if text is not None:
             await self.sender.sendMessage(text)
-        if img is not None:
-            await self.sender.sendPhoto(b64decode(img.decode("utf-8")))
+        if img:
+            await self.sender.sendPhoto(b64decode(img.encode("utf-8")))
 
     async def _get_response(self, msg):
 
@@ -87,6 +87,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
         first_name = msg["from"].get("first_name", "")
         table = await self.get_or_add(user_id, last_name, first_name)
         in_text = msg["text"]
+
         me = await self.me
         my_name = f"@{me['username']}"
         if msg["from"]["is_bot"]:
@@ -95,7 +96,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
             "type", "chat"
         ) == "group" and not in_text.startswith(my_name):
             return None, None
-        in_text = in_text.strip(my_name)
+        in_text = in_text.split(my_name)[-1]
         attempts = table["login_attempts"]
         secret = db_settings.db_settings["tg_secret"]
         img, text = None, "Got it!"

@@ -227,7 +227,6 @@ class ChatBot(Resource):
         if "feeding" in words and "milk" in words:
             table = "mamadera"
             content = "breastmilk"
-
         return Instructions(
             instruction=instruction,
             table=table,
@@ -302,7 +301,7 @@ class ChatBot(Resource):
                 ctype = "pee"
             df = pd.DataFrame({"id": [idx], "time": [time], "type": [ctype]})
 
-        # self.db_settings.append_db(table, df)
+        self.db_settings.append_db(table, df)
         columns = [c for c in df.columns if c != "id"]
         df["time"] = df["time"].dt.strftime("%a %_d. %b %R")
         out = (
@@ -361,7 +360,7 @@ class ChatBot(Resource):
 
     def _read_db(self, content: str, when: datetime | str, table: str) -> str:
         if not table:
-            jsonify(
+            return jsonify(
                 {
                     "text": "I could not retrieve the information from the database"
                 }
@@ -456,7 +455,6 @@ class ChatBot(Resource):
         text: Optional[str] = None,
         plot_text: Optional[str] = None,
     ) -> jsonify:
-        print("foo", table)
         if not table:
             resp = {"text": "You must tell me what to plot."}
             return jsonify(resp)
@@ -496,12 +494,12 @@ class ChatBot(Resource):
         inst = instruction.instruction
         if not inst:
             inst = "get"
-        if not instruction.table and inst not in ("plot",):
-            jsonify({"text": "Sorry, I didn't get that"})
+        if not instruction.table:
+            return jsonify({"text": "Sorry, I didn't get that"})
         if inst == "get":
             return self._read_db(
                 instruction.content, instruction.when, instruction.table
-            )
+                )
         elif inst == "log":
             return_type, log_text = self._log_db(
                 instruction.content,
