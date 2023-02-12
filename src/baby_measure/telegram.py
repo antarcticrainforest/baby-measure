@@ -1,5 +1,6 @@
 """Service for telegram bot communication."""
 from __future__ import annotations
+from base64 import b64decode
 from datetime import datetime
 import time
 
@@ -44,7 +45,9 @@ class Telegram(telepot.aio.helper.ChatHandler):
     def url(self) -> str:
         return f"http://localhost:{self.port}/bot"
 
-    async def get_or_add(self, user_id: str, last_name: str, first_name: str) -> dict:
+    async def get_or_add(
+        self, user_id: str, last_name: str, first_name: str
+    ) -> dict:
         with create_engine(db_settings.connection).connect() as conn:
             table = pd.read_sql(
                 f"select * from telebot where user_id = {user_id}", conn
@@ -71,10 +74,11 @@ class Telegram(telepot.aio.helper.ChatHandler):
         return table.iloc[0]
 
     async def on_chat_message(self, msg) -> None:
-        text = await self._get_response(msg)
-        
+        img, text = await self._get_response(msg)
         if text is not None:
             await self.sender.sendMessage(text)
+        if img is not None:
+            await self.sender.sendPhoto(b64decode(img.decode("utf-8")))
 
     async def _get_response(self, msg):
 
@@ -86,24 +90,25 @@ class Telegram(telepot.aio.helper.ChatHandler):
         me = await self.me
         my_name = f"@{me['username']}"
         if msg["from"]["is_bot"]:
-            return
-        if msg["chat"].get("type", "chat") == "group" and not in_text.startswith(my_name):
-            return
+            return None, None
+        if msg["chat"].get(
+            "type", "chat"
+        ) == "group" and not in_text.startswith(my_name):
+            return None, None
         in_text = in_text.strip(my_name)
         attempts = table["login_attempts"]
         secret = db_settings.db_settings["tg_secret"]
-        text = "Got it!"
+        img, text = None, "Got it!"
         if bool(table["allowed"]) is True:
             try:
-                return (
-                    requests.post(self.url, params={"text": in_text})
-                    .json()
-                    .get("message", "Internal Error :(")
-                )
+                res = requests.get(self.url, params={"text": in_text}).json()
+                text = res.get("text", "Internal Error :(")
+                img = res.get("img", "")
+                return img, text
             except requests.exceptions.ConnectionError:
-                return "Server not running :("
+                return None, "Server not running :("
         if attempts >= 3:
-            return "Got it!"
+            return None, "Got it!"
         if attempts == 0:
             if in_text != secret:
                 text = (
@@ -126,7 +131,7 @@ class Telegram(telepot.aio.helper.ChatHandler):
         if not bool(table["allowed"]) is False:
             table["login_attempts"] += 1
         await self._update_user(user_id, table)
-        return text
+        return img, text
 
     async def _update_user(self, uid, table):
         keys = (
@@ -147,9 +152,13 @@ class Telegram(telepot.aio.helper.ChatHandler):
                 add_items.append(f"{table[k]}")
         update = ", ".join(alter_items)
         with create_engine(db_settings.connection).connect() as conn:
-            exists = conn.execute(f"select * from telebot where user_id = {uid}")
+            exists = conn.execute(
+                f"select * from telebot where user_id = {uid}"
+            )
             if len(exists.fetchall()) > 0:
-                conn.execute(f"update telebot set {update} where user_id = {uid}")
+                conn.execute(
+                    f"update telebot set {update} where user_id = {uid}"
+                )
             else:
                 conn.execute(
                     f"insert into telebot ({', '.join(keys)}) "
@@ -157,7 +166,9 @@ class Telegram(telepot.aio.helper.ChatHandler):
                 )
 
     async def on_callback_query(self, msg):
-        query_id, from_id, query_data = telepot.glance(msg, flavor="callback_query")
+        query_id, from_id, query_data = telepot.glance(
+            msg, flavor="callback_query"
+        )
         print("Callback Query:", query_id, from_id, query_data)
 
         text = await self._get_response(msg)
@@ -177,8 +188,11 @@ class Telegram(telepot.aio.helper.ChatHandler):
 
     async def on_inline_query(self, msg):
         print(msg)
+
         def compute():
-            query_id, from_id, query_string = telepot.glance(msg, flavor="inline_query")
+            query_id, from_id, query_string = telepot.glance(
+                msg, flavor="inline_query"
+            )
             print("Inline Query:", query_id, from_id, query_string)
 
             articles = [

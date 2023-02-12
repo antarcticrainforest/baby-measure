@@ -39,8 +39,7 @@ meta = dict(
     classifiers=[
         "Development Status :: 1 - Planning",
         "Environment :: Console",
-        "Intended Audience :: Other Audience"
-        "License :: Freely Distributable",
+        "Intended Audience :: Other Audience" "License :: Freely Distributable",
         "Operating System :: POSIX :: Linux",
         "Natural Language :: English",
         "Topic :: System :: Logging",
@@ -65,9 +64,11 @@ meta = dict(
         "gitpython",
         "pandas",
         "PyGithub",
+        "python-dateutil",
         "pymysql",
+        "kaleido",
         "sqlalchemy",
-        "telepot @ git+https://github.com/FoRKsH/telepot.git"
+        "telepot @ git+https://github.com/FoRKsH/telepot.git",
     ],
     extras_require={
         "tests": [

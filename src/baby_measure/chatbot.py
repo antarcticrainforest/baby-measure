@@ -1,14 +1,16 @@
 """Interface for a chatbot."""
 from __future__ import annotations
+import base64
 from datetime import datetime, timedelta
 from pathlib import Path
 import re
 import string
 import subprocess
-from tempfile import TemporaryDirectory
-from typing import NamedTuple, Union
+from tempfile import NamedTemporaryFile
+from typing import NamedTuple, Tuple, Dict, Optional, Union
 
-from flask import request
+from dateutil import parser
+from flask import request, jsonify
 from flask_restful import reqparse, abort, Resource
 import pandas as pd
 import numpy as np
@@ -64,6 +66,9 @@ class ChatBot(Resource):
         "what": "get",
         "how": "get",
         "tell": "get",
+        "plot": "plot",
+        "draw": "plot",
+        "figure": "plot",
     }
     table_types: dict[str, str] = {
         "nappy": "nappie",
@@ -86,6 +91,7 @@ class ChatBot(Resource):
         "light": "body",
         "tall": "body",
         "small": "body",
+        "body": "body",
         "bottle": "mamadera",
     }
 
@@ -230,52 +236,22 @@ class ChatBot(Resource):
             content=content,
         )
 
-    @background
-    def _save_and_commit(self):
-
-        total_amount_fig = self.plot.amount
-        daily_amount_fig = self.plot.daily_amount
-        breastfeeding_fig = self.plot.breastfeeding
-        weight_fig = self.plot.plot_body(
-            "weight", "Weight [km]", "Body Weight"
-        )
-        height_fig = self.plot.plot_body(
-            "height", "Height [cm]", "Body Height"
-        )
-        head_fig = self.plot.plot_body("head", "Size [cm]", "Head Size")
-        nappy_fig = self.plot.nappy
-        self.plot.save_plots(
-            total_amount_fig,
-            daily_amount_fig,
-            breastfeeding_fig,
-            weight_fig,
-            height_fig,
-            head_fig,
-            nappy_fig,
-        )
-        if self.gh_page.use_gh_pages and self.gh_page._item_queue.empty():
-            with self.gh_page._lock:
-                self.gh_page._item_queue.put("block")
-                with TemporaryDirectory() as repo_dir:
-                    self.gh_page._commit(Path(repo_dir))
-                _ = self.gh_page._item_queue.get()
-
     def _log_db(
         self,
         content: str,
         when: datetime | str,
         table: str,
         amount: float | None,
-    ) -> str:
+    ) -> Tuple[int, str]:
         if not table:
-            return "I could not retrieve the information from the database"
+            return 1, "I could not retrieve the information from the database"
         idx = self.db_settings.db_index
         if isinstance(when, datetime):
             time = when
         else:
             time = datetime.now()
         if table in ["mamadera", "body", "breastfeeding"] and amount is None:
-            return "You must give a numeric value to log."
+            return 1, "You must give a numeric value to log."
         if table == "mamadera" and content == "formula":
             df = pd.DataFrame(
                 {
@@ -313,7 +289,7 @@ class ChatBot(Resource):
             elif content in ("head", "size"):
                 values["head"] = float(amount)
             else:
-                return (
+                return 1, (
                     "Could not determine measurment type, use one of the "
                     "following keywords: 'height', 'lenght', 'weight', "
                     "'head', 'size'"
@@ -326,20 +302,14 @@ class ChatBot(Resource):
                 ctype = "pee"
             df = pd.DataFrame({"id": [idx], "time": [time], "type": [ctype]})
 
-        self.db_settings.append_db(table, df)
-        self._save_and_commit()
+        # self.db_settings.append_db(table, df)
         columns = [c for c in df.columns if c != "id"]
         df["time"] = df["time"].dt.strftime("%a %_d. %b %R")
         out = (
             f"The following content has been added to the {table} db:\n"
-            f"{df[columns].to_string(index=False)}"
+            f"{df[columns].to_string(index=False)}\n Here is the latest plot:"
         )
-        if self.gh_page.gh_page_url:
-            out += (
-                "\nNew plots have been created and should be available shortly "
-                f"under:\n {self.gh_page.gh_page_url}"
-            )
-        return out
+        return 0, out
 
     @staticmethod
     def _get_body_measure(table: pd.DataFrame) -> str:
@@ -391,7 +361,11 @@ class ChatBot(Resource):
 
     def _read_db(self, content: str, when: datetime | str, table: str) -> str:
         if not table:
-            return "I could not retrieve the information from the database"
+            jsonify(
+                {
+                    "text": "I could not retrieve the information from the database"
+                }
+            )
         entries = self.db_settings.read_db(table)
         entries = entries.set_index(pd.DatetimeIndex(entries["time"].values))
         if table == "mamadera" and content != "formula":
@@ -416,7 +390,7 @@ class ChatBot(Resource):
             text = self._get_nappy_text(subset, entries)
         else:
             text = self._get_feeding_text(subset, entries, content)
-        return text
+        return jsonify({"text": text})
 
     @property
     def _uptime(self) -> str:
@@ -428,8 +402,90 @@ class ChatBot(Resource):
                 check=True,
             )
         except (FileNotFoundError, subprocess.CalledProcessError):
-            return "I can't get you this information."
-        return res.stdout.decode()
+            return jsonify({"text": "I can't get you this information."})
+        return jsonify({"text": res.stdout.decode()})
+
+    def _get_plot_timerange(self, text: str) -> Tuple[datetime, datetime]:
+        for word in ("starting", "between", "since"):
+            text = text.replace(word, "from")
+        for word in ("until", "and"):
+            text = text.replace(word, "to")
+        for word in ("previous",):
+            text = text.replace(word, "since")
+        if "to" in text:
+            start, _, end = text.partition("to")
+        else:
+            start, end = text, ""
+        if "from" in text:
+            start = start.partition("from")[-1].strip()
+        end = end.strip().replace(".", "/")
+        start = start.strip().replace(".", "/")
+        punctuations = string.punctuation.strip("-").strip(":").strip("/")
+        for p in punctuations:
+            end = end.strip(p)
+            start = start.strip(p)
+        if start:
+            try:
+                start = parser.parse(start)
+            except:
+                start = ""
+        if end:
+            try:
+                end = parser.parse(end)
+            except:
+                end = ""
+
+        if "last" in text:
+            num = text.partition("last")[-1].strip().split()[0].strip()
+        else:
+            num = ""
+        if num:
+            try:
+                start = datetime.now() - timedelta(days=int(num))
+            except:
+                pass
+        if not end:
+            end = datetime.now()
+        if not start:
+            start = datetime.now() - timedelta(days=10)
+        return start - timedelta(hours=12), end + timedelta(hours=12)
+
+    def _plot_content(
+        self,
+        table: str,
+        text: Optional[str] = None,
+        plot_text: Optional[str] = None,
+    ) -> jsonify:
+        print("foo", table)
+        if not table:
+            resp = {"text": "You must tell me what to plot."}
+            return jsonify(resp)
+        fig = None
+        times = self._get_plot_timerange(text or "")
+        entries = self.db_settings.read_db(table)
+        entries = entries.set_index(pd.DatetimeIndex(entries["time"].values))
+        height, width = 300, 600
+        if table == "mamadera":
+            fig = self.plot.daily_amount(times)
+        elif table == "breastfeeding":
+            fig = self.plot.breastfeeding(times)
+        elif table == "nappie":
+            fig = self.plot.nappy(times)
+        elif table == "body":
+            fig = self.plot.create_body_sub_plot()
+            width, height = 600, 600
+
+        else:
+            resp = {"text": "I don't know what type of plot I should create"}
+            return jsonify(resp)
+        img = base64.b64encode(
+            fig.to_image(format="jpeg", width=width, height=height, scale=1.3)
+        ).decode("utf-8")
+        plot_time = (
+            f'{times[0].strftime("%d. %b")} and {times[1].strftime("%d. %b")}'
+        )
+        plot_text = plot_text or f"Here is the plot between {plot_time}"
+        return jsonify({"text": plot_text, "img": img})
 
     def _process_text(self, text: str):
         """Extract the instructions from a text."""
@@ -440,26 +496,46 @@ class ChatBot(Resource):
         inst = instruction.instruction
         if not inst:
             inst = "get"
-        if not instruction.table:
-            return "Sorry, I didn't get that"
+        if not instruction.table and inst not in ("plot",):
+            jsonify({"text": "Sorry, I didn't get that"})
         if inst == "get":
             return self._read_db(
                 instruction.content, instruction.when, instruction.table
             )
         elif inst == "log":
-            return self._log_db(
+            return_type, log_text = self._log_db(
                 instruction.content,
                 instruction.when,
                 instruction.table,
                 instruction.amount,
             )
-        return "Sorry, I didn't get that"
+            if return_type == 0:
+                return self._plot_content(
+                    instruction.table,
+                    plot_text=log_text,
+                )
+            else:
+                return jsonify({"text": log_text})
+        elif inst == "plot":
+            return self._plot_content(
+                instruction.table,
+                text=text.lower(),
+            )
+        return jsonify({"text": "Sorry, I didn't get that"})
 
     def _abort(self):
         abort(405, message="The method is not allowed for the requested URL.")
 
-    def get(self):
-        self._abort()
+    def _post_or_get(self, *args: str) -> Tuple[Dict[str, str], int]:
+
+        text = request.args.get("text")
+        if not text:
+            self._abort("Key should have text")
+        proc = self._process_text(text)
+        return proc
+
+    def get(self, *args):
+        return self._post_or_get()
 
     def put(self):
         self._abort()
@@ -469,11 +545,7 @@ class ChatBot(Resource):
 
     def post(self, *args):
         """Get the information from the text."""
-        text = request.args.get("text")
-        if not text:
-            self._abort("Key should have text")
-        text = self._process_text(text)
-        return {"message": text}, 200
+        return self._post_or_get()
 
 
 if __name__ == "__main__":

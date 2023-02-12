@@ -4,11 +4,14 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 import time
+from typing import Tuple, Optional
 
 import appdirs
 from dash import html, dcc
 from plotly import express as px
 import plotly
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 
 from .utils import DBSettings
@@ -26,8 +29,7 @@ class Plot:
     def read_db(self, table: str) -> pd.DataFrame:
         return self.db_settings.read_db(table)
 
-    @property
-    def amount(self):
+    def amount(self, times: Optional[Tuple[datetime, datetime]] = None):
         """Create the amount plot."""
         entries = self.read_db("mamadera")
         fig = px.line(
@@ -56,7 +58,7 @@ class Plot:
             ),
         )
         fig.update_xaxes(
-            range=self.get_xaxis_range(entries.time),
+            range=times or self.get_xaxis_range(entries.time),
             fixedrange=False,
         )
         return fig
@@ -75,8 +77,7 @@ class Plot:
             times[-1] + pd.Timedelta(hours=12),
         ]
 
-    @property
-    def breastfeeding(self):
+    def breastfeeding(self, times: Optional[Tuple[datetime, datetime]] = None):
 
         entries = self.read_db("breastfeeding")
         if not len(entries):
@@ -108,13 +109,12 @@ class Plot:
             ),
         )
         fig.update_xaxes(
-            range=self.get_xaxis_range(data.time),
+            range=times or self.get_xaxis_range(data.time),
             fixedrange=False,
         )
         return fig
 
-    @property
-    def daily_amount(self):
+    def daily_amount(self, times: Optional[Tuple[datetime, datetime]] = None):
 
         entries = self.read_db("mamadera")
         if not len(entries):
@@ -171,8 +171,41 @@ class Plot:
             ),
         )
         fig.update_xaxes(
-            range=self.get_xaxis_range(data.time),
+            range=times or self.get_xaxis_range(data.time),
             fixedrange=False,
+        )
+        return fig
+
+    def create_body_sub_plot(self):
+
+        entries = self.read_db("body")
+
+        fig = make_subplots(rows=3, cols=1)
+        for n, key in enumerate(("Weight [kg]", "Height [cm]", "Head size [cm]")):
+            prop = key.split()[0]
+            entry = entries[["time", prop.lower()]].dropna()
+            fig.append_trace(
+                go.Scatter(
+                    x=entry["time"],
+                    y=entry[prop.lower()],
+                    name=prop,
+                ),
+                row=n + 1,
+                col=1,
+            )
+            fig.update_yaxes(title_text=key, row=n + 1, col=1)
+        fig.update_layout(
+            title_text="Body measures",
+            margin=dict(l=10, r=10, b=20),
+            legend=dict(
+                yanchor="bottom",
+                y=1.02,
+                font=dict(size=14),
+                xanchor="right",
+                x=1,
+                title="",
+                orientation="h",
+            ),
         )
         return fig
 
@@ -196,8 +229,7 @@ class Plot:
         )
         return fig
 
-    @property
-    def nappy(self):
+    def nappy(self, times: Optional[Tuple[datetime, datetime]] = None):
 
         entries = self.read_db("nappie")
         if not len(entries):
@@ -264,14 +296,10 @@ class Plot:
         )
         return fig
 
-    def save_plots(
-        self, *figs: plotly.graph_objs._figure.Figure
-    ) -> Path | None:
+    def save_plots(self, *figs: plotly.graph_objs._figure.Figure) -> Path | None:
         cache_dir = self.gh_pages.repo_dir
         out_file = self.gh_pages.repo_dir / "index.html"
-        if out_file.is_file() and (
-            time.time() - out_file.stat().st_mtime < 60
-        ):
+        if out_file.is_file() and (time.time() - out_file.stat().st_mtime < 60):
             return
         header = "<html><head><title>Baby Measure</title>"
         header += '<link rel="icon" type="image/x-icon" href="favicon.ico">'
@@ -287,13 +315,13 @@ class Plot:
     @property
     def children(self) -> list:
         """Create a div container."""
-        total_amount_fig = self.amount
-        daily_amount_fig = self.daily_amount
-        breastfeeding_fig = self.breastfeeding
+        total_amount_fig = self.amount()
+        daily_amount_fig = self.daily_amount()
+        breastfeeding_fig = self.breastfeeding()
         weight_fig = self.plot_body("weight", "Weight [km]", "Body Weight")
         height_fig = self.plot_body("height", "Height [cm]", "Body Height")
         head_fig = self.plot_body("head", "Size [cm]", "Head Size")
-        nappy_fig = self.nappy
+        nappy_fig = self.nappy()
         self.save_plots(
             total_amount_fig,
             daily_amount_fig,
