@@ -5,6 +5,7 @@ LABEL maintainer="antarcticrainforest" \
 ENV MYSQL_ROOT_HOST=localhost \
     MYSQL_DATABASE=baby_measure \
     MYSQL_USER=baby \
+    MYSQL_PORT=3306 \
     MYSQL_PASSWORD=m3sAurE48 \
     MYSQL_ROOT_PASSWORD=m3sAurE48 \
     CONFIG_DIR=/var/volume

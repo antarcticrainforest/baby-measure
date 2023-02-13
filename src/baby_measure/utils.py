@@ -366,7 +366,7 @@ class DBSettings:
     ) -> dict[str, str]:
         """Create a new config file."""
         db_settings = dict(
-            db_host=os.environ.get("DB_HOST")
+            db_host=os.environ.get("MYSQL_ROOT_HOST")
             or input(f"DB server [{defaults['db_host']}]: ").strip()
             or defaults["db_host"],
             db_port=os.environ.get("MYSQL_PORT")
@@ -378,7 +378,8 @@ class DBSettings:
             db_user=os.environ.get("MYSQL_USER")
             or input(f"DB user name [{defaults['db_user']}]: ").strip()
             or defaults["db_user"],
-            db_passwd=os.environ.get("MYSQL_PASSWD") or getpass("DB passwd: "),
+            db_passwd=os.environ.get("MYSQL_PASSWORD")
+            or getpass("DB passwd: "),
             tg_token=None,
         )
         inp_file.parent.mkdir(exist_ok=True, parents=True)
