@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import multiprocessing as mp
 import os
+from pathlib import Path
+
 import appdirs
 from .utils import DBSettings
 from ._version import __version__
@@ -10,8 +12,8 @@ from ._version import __version__
 
 def cli() -> None:
     """Construct the command line interface."""
-     db_settings_file = (
-            Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
+    db_settings_file = (
+        Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
     )
     db_settings_file = Path(
         os.environ.get("CONFIG_FILE", db_settings_file) or db_settings_file
@@ -41,12 +43,7 @@ def cli() -> None:
         default=False,
         help="Only (re)-configure the app.",
     )
-    cli_app.add_argument(
-        "-c",
-        "--config",
-        type=Path,
-        default=db_settings_file
-    )
+    cli_app.add_argument("-c", "--config", type=Path, default=db_settings_file)
     cli_app.add_argument(
         "-s",
         "--services",
@@ -66,9 +63,7 @@ def cli() -> None:
     token = DBSettings.configure().get("tg_token")
     background_proc = []
     if token and "telegram" in args.services:
-        background_proc.append(
-            mp.Process(target=run_telegram, args=(token, args.port))
-        )
+        background_proc.append(mp.Process(target=run_telegram, args=(token, args.port)))
         background_proc[-1].start()
     if "web" in args.services:
         run_flask_server(debug_mode=args.debug, port=args.port)

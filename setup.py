@@ -55,6 +55,7 @@ meta = dict(
     package_dir={"": "src"},
     entry_points={"console_scripts": ["baby-measure = baby_measure.cli:cli"]},
     install_requires=[
+        "appdirs",
         "dash",
         "dash-datetimepicker",
         "dash-loading-spinners",
