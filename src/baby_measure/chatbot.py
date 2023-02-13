@@ -2,11 +2,9 @@
 from __future__ import annotations
 import base64
 from datetime import datetime, timedelta
-from pathlib import Path
 import re
 import string
 import subprocess
-from tempfile import NamedTemporaryFile
 from typing import NamedTuple, Tuple, Dict, Optional, Union
 
 from dateutil import parser
@@ -15,8 +13,7 @@ from flask_restful import reqparse, abort, Resource
 import pandas as pd
 import numpy as np
 
-from .utils import DBSettings, background
-from .server_utils import db_settings, gh_page, plot
+from .server_utils import db_settings, plot
 
 
 Instructions = NamedTuple(
@@ -34,7 +31,6 @@ Instructions = NamedTuple(
 class ChatBot(Resource):
     """A simple chatbot."""
 
-    gh_page = gh_page
     plot = plot
     db_settings = db_settings
     greetings: list[str] = [
@@ -139,9 +135,7 @@ class ChatBot(Resource):
 
     def _extract_datetime(self, txt: str) -> tuple[datetime | None, str]:
         """Use a regex pattern to extract a datetime."""
-        date_regex = (
-            r"(\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{1,4}[./-]\d{1,2}[./-]\d{2})"
-        )
+        date_regex = r"(\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{1,4}[./-]\d{1,2}[./-]\d{2})"
         month_regex = r"(\d{1,2}[./-]\d{2})"
         time_regex = r"([01]?[0-9]|2[0-3]):[0-5][0-9]"
         date_search = re.search(date_regex, txt)
@@ -161,9 +155,7 @@ class ChatBot(Resource):
             txt = txt.replace(date_string, "")
         elif not date_string:
             if month_search:
-                month_string = (
-                    month_search.group().replace(".", "-").replace("/", "-")
-                )
+                month_string = month_search.group().replace(".", "-").replace("/", "-")
                 date_string = f"{datetime.now().strftime('%Y')}-{month_string}"
             else:
                 date_string = ""
@@ -187,9 +179,7 @@ class ChatBot(Resource):
         instruction, table = "", ""
         content: str = ""
         amount: float | None = None
-        mamadera_markers = [
-            k for (k, v) in self.table_types.items() if v == "mamadera"
-        ]
+        mamadera_markers = [k for (k, v) in self.table_types.items() if v == "mamadera"]
         for word in words:
 
             if word in self.action_instruction and not instruction:
@@ -313,16 +303,16 @@ class ChatBot(Resource):
     @staticmethod
     def _get_body_measure(table: pd.DataFrame) -> str:
         time = table["time"].strftime("%a %_d. %b %R")
-        return f"Measures from {time}:\n{table[['weight', 'height', 'head']].to_string()}"
+        return (
+            f"Measures from {time}:\n{table[['weight', 'height', 'head']].to_string()}"
+        )
 
     @staticmethod
     def _get_nappy_text(last: pd.DataFrame, table: pd.DataFrame) -> str:
 
         time = last["time"].strftime("%a %_d. %b %R")
         day = pd.DatetimeIndex([last["time"].date()])
-        count = int(
-            table.groupby(pd.Grouper(freq="1D")).count().loc[day]["type"]
-        )
+        count = int(table.groupby(pd.Grouper(freq="1D")).count().loc[day]["type"])
         content = str(last["type"])
         return (
             f"On {time} the nappy content was {content} "
@@ -354,16 +344,12 @@ class ChatBot(Resource):
             this_time = float(last["duration"])
             amount = "duration"
         daily_values = f"(total that day: {daily_sum})"
-        return (
-            f"The {content}{amount} from {time} was {this_time} {daily_values}"
-        )
+        return f"The {content}{amount} from {time} was {this_time} {daily_values}"
 
     def _read_db(self, content: str, when: datetime | str, table: str) -> str:
         if not table:
             return jsonify(
-                {
-                    "text": "I could not retrieve the information from the database"
-                }
+                {"text": "I could not retrieve the information from the database"}
             )
         entries = self.db_settings.read_db(table)
         entries = entries.set_index(pd.DatetimeIndex(entries["time"].values))
@@ -479,9 +465,7 @@ class ChatBot(Resource):
         img = base64.b64encode(
             fig.to_image(format="jpeg", width=width, height=height, scale=1.3)
         ).decode("utf-8")
-        plot_time = (
-            f'{times[0].strftime("%d. %b")} and {times[1].strftime("%d. %b")}'
-        )
+        plot_time = f'{times[0].strftime("%d. %b")} and {times[1].strftime("%d. %b")}'
         plot_text = plot_text or f"Here is the plot between {plot_time}"
         return jsonify({"text": plot_text, "img": img})
 
@@ -499,7 +483,7 @@ class ChatBot(Resource):
         if inst == "get":
             return self._read_db(
                 instruction.content, instruction.when, instruction.table
-                )
+            )
         elif inst == "log":
             return_type, log_text = self._log_db(
                 instruction.content,

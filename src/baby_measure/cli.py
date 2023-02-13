@@ -2,14 +2,20 @@
 from __future__ import annotations
 import argparse
 import multiprocessing as mp
-
+import os
+import appdirs
 from .utils import DBSettings
 from ._version import __version__
 
 
 def cli() -> None:
     """Construct the command line interface."""
-
+     db_settings_file = (
+            Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
+    )
+    db_settings_file = Path(
+        os.environ.get("CONFIG_FILE", db_settings_file) or db_settings_file
+    )
     cli_app = argparse.ArgumentParser(
         prog="baby-measure",
         description="View and manipulate geojson files",
@@ -29,12 +35,17 @@ def cli() -> None:
         version="%(prog)s {version}".format(version=__version__),
     )
     cli_app.add_argument(
-        "-c",
-        "--config",
-        "--configure",
+        "-r",
+        "--reconfigure",
         action="store_true",
         default=False,
         help="Only (re)-configure the app.",
+    )
+    cli_app.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        default=db_settings_file
     )
     cli_app.add_argument(
         "-s",
@@ -46,6 +57,7 @@ def cli() -> None:
         help="Set the services you want to run.",
     )
     args = cli_app.parse_args()
+    os.environ["CONFIG_FILE"] = str(args.config)
     if args.config:
         DBSettings.configure(override=True)
         return

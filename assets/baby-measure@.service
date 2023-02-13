@@ -1,0 +1,16 @@
+[Unit]
+Description=Keep track of baby's growth and health
+After=docker.service
+
+[Service]
+ExecStartPre=mkdir -p /var/local/baby-measure%i/mysql
+ExecStartPre=/usr/bin/docker rm -f baby-measure-container
+ExecStart=/usr/bin/docker run --rm --name=baby-measure-container\
+                       -p %i:5080 \
+                       -e CONFIG_DIR=/var/local/baby-measure%i\
+                       -v /var/local/baby-measure%i/mysql:/var/lib/mysql\
+                       baby-measure
+ExecStop=/usr/bin/docker stop baby-measure-container
+
+[Install]
+WantedBy=multi-user.target

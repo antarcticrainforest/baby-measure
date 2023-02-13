@@ -15,16 +15,14 @@ from plotly.subplots import make_subplots
 import pandas as pd
 
 from .utils import DBSettings
-from .github import GHPages
 
 
 class Plot:
     """All plots on one page."""
 
-    def __init__(self, db_settings: DBSettings, pages: GHPages):
+    def __init__(self, db_settings: DBSettings):
 
         self.db_settings = db_settings
-        self.gh_pages = pages
 
     def read_db(self, table: str) -> pd.DataFrame:
         return self.db_settings.read_db(table)
@@ -296,22 +294,6 @@ class Plot:
         )
         return fig
 
-    def save_plots(self, *figs: plotly.graph_objs._figure.Figure) -> Path | None:
-        cache_dir = self.gh_pages.repo_dir
-        out_file = self.gh_pages.repo_dir / "index.html"
-        if out_file.is_file() and (time.time() - out_file.stat().st_mtime < 60):
-            return
-        header = "<html><head><title>Baby Measure</title>"
-        header += '<link rel="icon" type="image/x-icon" href="favicon.ico">'
-        header += "</head><body>"
-        for fig in figs:
-            header += fig.to_html(full_html=False)
-        header += "</body></html>"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        with out_file.open("w", encoding="utf-8") as f_obj:
-            f_obj.write(header)
-        print(f"Plots saved to {cache_dir / 'index.html'}")
-
     @property
     def children(self) -> list:
         """Create a div container."""
@@ -322,15 +304,6 @@ class Plot:
         height_fig = self.plot_body("height", "Height [cm]", "Body Height")
         head_fig = self.plot_body("head", "Size [cm]", "Head Size")
         nappy_fig = self.nappy()
-        self.save_plots(
-            total_amount_fig,
-            daily_amount_fig,
-            breastfeeding_fig,
-            weight_fig,
-            height_fig,
-            height_fig,
-            nappy_fig,
-        )
         return [
             html.Div(
                 id="amounts",

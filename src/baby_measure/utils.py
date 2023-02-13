@@ -5,6 +5,7 @@ from getpass import getpass
 import logging
 from pathlib import Path
 import json
+import os
 import time
 import threading
 from typing import Any, Callable
@@ -18,30 +19,7 @@ from sqlalchemy import create_engine
 logging.basicConfig(
     format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-logger = logging.getLogger("baby-meash")
-
-
-def background(
-    func: Callable[..., Any]
-) -> Callable[..., threading.Thread | None]:
-    """Threading decorator
-
-    use @background above the function you want to run in the background
-    """
-
-    def backgrund_func(*args: Any, **kwargs: Any) -> threading.Thread | None:
-        # Test coverage doesn't work very well in this multi threadded env
-        # the serial switch is mainly for unit testing purpose to run
-        # the decorated function serial.
-        serial = kwargs.pop("_serial", False)
-        if serial:
-            func(*args, **kwargs)
-            return None
-        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-        thread.start()
-        return thread
-
-    return backgrund_func
+logger = logging.getLogger("baby-measure")
 
 
 def _utc_timestep_to_local_timestep(utc: datetime) -> datetime:
@@ -384,60 +362,42 @@ class DBSettings:
 
     @staticmethod
     def gather_config(
-        inp_file: Path, defaults: dict[str, str]
+        inp_file: Path, defaults: dict[str, str], manual_config: bool = False
     ) -> dict[str, str]:
         """Create a new config file."""
         db_settings = dict(
-            db_host=input(f"DB server [{defaults['db_host']}]: ").strip()
+            db_host=os.environ.get("DB_HOST")
+            or input(f"DB server [{defaults['db_host']}]: ").strip()
             or defaults["db_host"],
-            db_port=input(f"DB port [{defaults['db_port']}]: ").strip()
+            db_port=os.environ.get("MYSQL_PORT")
+            or input(f"DB port [{defaults['db_port']}]: ").strip()
             or defaults["db_port"],
-            db_name=input(f"DB name [{defaults['db_name']}]: ").strip()
+            db_name=os.environ.get("MYSQL_DATABASE")
+            or input(f"DB name [{defaults['db_name']}]: ").strip()
             or defaults["db_name"],
-            db_user=input(f"DB user name [{defaults['db_user']}]: ").strip()
+            db_user=os.environ.get("MYSQL_USER")
+            or input(f"DB user name [{defaults['db_user']}]: ").strip()
             or defaults["db_user"],
-            db_passwd=getpass("DB passwd: "),
-            gh_token=None,
-            gh_repo=None,
+            db_passwd=os.environ.get("MYSQL_PASSWD") or getpass("DB passwd: "),
             tg_token=None,
         )
         inp_file.parent.mkdir(exist_ok=True, parents=True)
-        init_github = (
-            input(
-                "Create a GitHub Page for remote access of the visualisation? [Y|n] "
-            ).strip()
-            or "y"
-        )
-        if init_github.lower().startswith("y"):
-            db_settings.update(
-                dict(
-                    gh_token=input(
-                        f"Paste the GitHub access token: [{defaults.get('gh_token', '')}]: "
-                    ).strip()
-                    or defaults.get("gh_token"),
-                    gh_repo=input(
-                        f"GitHub repository [{defaults.get('gh_repo','baby-measure')}]: "
-                    ).strip()
-                    or defaults.get("gh_repo", "baby-measure"),
-                )
+        if manual_config is True:
+            init_telegram = (
+                input(
+                    "Use a telegram chatbot service to log and query entries? [y|N] "
+                ).strip()
+                or "n"
             )
-            if not db_settings.get("gh_token"):
-                raise ValueError("You must set a GitHub access token")
-        init_telegram = (
-            input(
-                "Use a telegram chatbot service to log and query entries? [y|N] "
-            ).strip()
-            or "n"
-        )
-        if init_telegram.lower().startswith("y"):
-            db_settings["tg_token"] = input(
-                f"Enter API token [{defaults.get('tg_token', '')}]: "
-            ).strip() or defaults.get("tg_token", "")
-            db_settings["tg_secret"] = input(
-                "Set a secret sentence you give to users to authorisation:\n"
-            ).strip() or defaults.get("tg_secret", "")
-            if not db_settings["tg_secret"]:
-                raise ValueError("You must give a secret sentence.")
+            if init_telegram.lower().startswith("y"):
+                db_settings["tg_token"] = input(
+                    f"Enter API token [{defaults.get('tg_token', '')}]: "
+                ).strip() or defaults.get("tg_token", "")
+                db_settings["tg_secret"] = input(
+                    "Set a secret sentence you give to users to authorisation:\n"
+                ).strip() or defaults.get("tg_secret", "")
+                if not db_settings["tg_secret"]:
+                    raise ValueError("You must give a secret sentence.")
         with inp_file.open("w", encoding="utf-8") as f_obj:
             json.dump(db_settings, f_obj, indent=3)
         inp_file.chmod(0o600)
@@ -498,7 +458,7 @@ class DBSettings:
                 db_conn.execute(statement)
 
     @classmethod
-    def configure(cls, override=False) -> None:
+    def configure(cls, reconfigure: bool = False) -> None:
         """Write/Read the database config."""
         defaults = {
             "db_host": "localhost",
@@ -509,14 +469,19 @@ class DBSettings:
         db_settings_file = (
             Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
         )
+        db_settings_file = Path(
+            os.environ.get("CONFIG_FILE", db_settings_file) or db_settings_file
+        )
         try:
             with db_settings_file.open() as f_obj:
                 settings = json.load(f_obj)
         except FileNotFoundError:
             settings = cls.gather_config(db_settings_file, defaults)
-        if override:
+        if reconfigure:
             defaults.update(settings)
-            settings = cls.gather_config(db_settings_file, defaults)
+            settings = cls.gather_config(
+                db_settings_file, defaults, manual_config=True
+            )
         cls.db_settings = settings
         cls.create_tables(
             settings["db_host"],
