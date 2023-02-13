@@ -56,7 +56,7 @@ def cli() -> None:
     args = cli_app.parse_args()
     os.environ["CONFIG_FILE"] = str(args.config)
     if args.config:
-        DBSettings.configure(override=True)
+        DBSettings.configure(reconfigure=True)
         return
     from .app import run_flask_server, run_telegram
 
