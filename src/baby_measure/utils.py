@@ -123,7 +123,7 @@ class DBSettings:
         self._last_connection[table] = datetime.now()
 
     def alter_table(self, statement: str, table: str) -> None:
-        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).begin() as conn:
             conn.execute(text(statement))
         self._set_db(table)
 
@@ -137,7 +137,7 @@ class DBSettings:
         return self._tables[table]
 
     def append_db(self, table: str, data_frame: pd.DataFrame) -> None:
-        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).begin() as conn:
             data_frame.to_sql(
                 table,
                 conn,
@@ -265,6 +265,7 @@ class DBSettings:
         extra_key: tuple[str, str] | None = None,
     ) -> str:
         entries = self.read_db(table)
+        print(entries)
         if extra_key:
             entries = entries.loc[entries[extra_key[0]] == extra_key[1]]
         entry = "No entries yet"
@@ -451,7 +452,7 @@ class DBSettings:
                 "PRIMARY KEY (`id`) );"
             ),
         )
-        with create_engine(conn, pool_recycle=3600).connect() as db_conn:
+        with create_engine(conn, pool_recycle=3600).begin() as db_conn:
             for statement in tables:
                 db_conn.execute(text(statement))
 
