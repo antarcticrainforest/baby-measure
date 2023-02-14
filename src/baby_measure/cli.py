@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 import appdirs
-from .utils import DBSettings
+from .utils import DBSettings, set_env_var
 from ._version import __version__
 
 
@@ -54,18 +54,19 @@ def cli() -> None:
         help="Set the services you want to run.",
     )
     args = cli_app.parse_args()
-    os.environ["CONFIG_FILE"] = str(args.config)
-    if args.config:
-        DBSettings.configure(reconfigure=True)
-        return
-    from .app import run_flask_server, run_telegram
+    with set_env_var("CONFIG_FILE", str(args.config)):
+        if args.reconfigure:
+            DBSettings.configure(reconfigure=True)
+            return
+        from .app import run_flask_server, run_telegram
 
-    token = DBSettings.configure().get("tg_token")
-    background_proc = []
-    if token and "telegram" in args.services:
-        background_proc.append(mp.Process(target=run_telegram, args=(token, args.port)))
-        background_proc[-1].start()
-    if "web" in args.services:
+        token = DBSettings.configure().get("tg_token")
+        background_proc = []
+        if token and "telegram" in args.services:
+            background_proc.append(
+                mp.Process(target=run_telegram, args=(token, args.port))
+            )
+            background_proc[-1].start()
         run_flask_server(debug_mode=args.debug, port=args.port)
-    for proc in background_proc:
-        proc.join()
+        for proc in background_proc:
+            proc.join()

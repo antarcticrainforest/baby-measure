@@ -1,5 +1,6 @@
 """Collection of utilities to run and setup the geojson viewer app."""
 from __future__ import annotations
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from getpass import getpass
 import logging
@@ -7,18 +8,15 @@ from pathlib import Path
 import json
 import os
 import time
-import threading
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 import appdirs
 from dash import html, dcc
 from dash_datetimepicker import DashDatetimepickerSingle
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
-logging.basicConfig(
-    format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger("baby-measure")
 
 
@@ -27,6 +25,18 @@ def _utc_timestep_to_local_timestep(utc: datetime) -> datetime:
     epoch = time.mktime(utc.timetuple())
     offset = datetime.fromtimestamp(epoch) - datetime.utcfromtimestamp(epoch)
     return utc + offset
+
+
+@contextmanager
+def set_env_var(key: str, value: str) -> Iterator[None]:
+    old_value = os.environ.get(key)
+    try:
+        os.environ[key] = value
+        yield
+    finally:
+        del os.environ[key]
+        if old_value:
+            os.environ[key] = old_value
 
 
 def str_to_timestamp(inp_time: str) -> datetime:
@@ -107,18 +117,14 @@ class DBSettings:
         self._last_connection = {}
 
     def _set_db(self, table: str) -> None:
-        with create_engine(
-            self.connection, pool_recycle=3600
-        ).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
             entries = pd.read_sql(f"select * from {table}", conn)
         self._tables[table] = entries.sort_values("time")
         self._last_connection[table] = datetime.now()
 
     def alter_table(self, statement: str, table: str) -> None:
-        with create_engine(
-            self.connection, pool_recycle=3600
-        ).connect() as conn:
-            conn.execute(statement)
+        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+            conn.execute(text(statement))
         self._set_db(table)
 
     def read_db(self, table: str, override: bool = False) -> pd.DataFrame:
@@ -131,9 +137,7 @@ class DBSettings:
         return self._tables[table]
 
     def append_db(self, table: str, data_frame: pd.DataFrame) -> None:
-        with create_engine(
-            self.connection, pool_recycle=3600
-        ).connect() as conn:
+        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
             data_frame.to_sql(
                 table,
                 conn,
@@ -195,15 +199,9 @@ class DBSettings:
                 "Body Measure",
                 "body",
                 [
-                    dcc.Input(
-                        type="number", placeholder="Weight [kg]", id="weight"
-                    ),
-                    dcc.Input(
-                        type="number", placeholder="Length [cm]", id="length"
-                    ),
-                    dcc.Input(
-                        type="number", placeholder="Head size [cm]", id="head"
-                    ),
+                    dcc.Input(type="number", placeholder="Weight [kg]", id="weight"),
+                    dcc.Input(type="number", placeholder="Length [cm]", id="length"),
+                    dcc.Input(type="number", placeholder="Head size [cm]", id="head"),
                 ],
                 label=self.last_entry(
                     "body",
@@ -378,8 +376,7 @@ class DBSettings:
             db_user=os.environ.get("MYSQL_USER")
             or input(f"DB user name [{defaults['db_user']}]: ").strip()
             or defaults["db_user"],
-            db_passwd=os.environ.get("MYSQL_PASSWORD")
-            or getpass("DB passwd: "),
+            db_passwd=os.environ.get("MYSQL_PASSWORD") or getpass("DB passwd: "),
             tg_token=None,
         )
         inp_file.parent.mkdir(exist_ok=True, parents=True)
@@ -456,7 +453,7 @@ class DBSettings:
         )
         with create_engine(conn, pool_recycle=3600).connect() as db_conn:
             for statement in tables:
-                db_conn.execute(statement)
+                db_conn.execute(text(statement))
 
     @classmethod
     def configure(cls, reconfigure: bool = False) -> None:
@@ -480,9 +477,7 @@ class DBSettings:
             settings = cls.gather_config(db_settings_file, defaults)
         if reconfigure:
             defaults.update(settings)
-            settings = cls.gather_config(
-                db_settings_file, defaults, manual_config=True
-            )
+            settings = cls.gather_config(db_settings_file, defaults, manual_config=True)
         cls.db_settings = settings
         cls.create_tables(
             settings["db_host"],

@@ -29,7 +29,7 @@ from .utils import (
 )
 from .edit import Edit
 from .chatbot import ChatBot
-from .server_utils import db_settings, gh_page, plot
+from .server_utils import db_settings, plot
 
 server = Flask("baby-measurement")
 edit = Edit(db_settings)
@@ -150,7 +150,6 @@ def log_entries(
     }
     if n_clicks > 0:
         db_settings.log_entries(entries, times)
-    gh_page.commit()
     tab = db_settings.add_entry_tab()
     return tab
 
@@ -202,5 +201,4 @@ def edit_values(
     for (table, index, value) in tables:
         edit.alter_table(table, index, value, action)
     children = edit.children
-    gh_page.commit()
     return children

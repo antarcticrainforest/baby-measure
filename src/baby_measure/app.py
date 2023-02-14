@@ -28,7 +28,7 @@ def run_flask_server(
         Additional keyword arguments
     """
     from .layout import measure_tab, plot_tab, edit_tab
-    from .server import app, gh_page, server
+    from .server import app, server
 
     app.layout = html.Div(
         children=[
@@ -58,7 +58,6 @@ def run_flask_server(
             )
         ]
     )
-    gh_page.debug = debug_mode
     server.run(debug=debug_mode, port=str(port), host="0.0.0.0")
 
 
