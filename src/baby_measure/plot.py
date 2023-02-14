@@ -66,6 +66,8 @@ class Plot:
         datetimes = pd.DatetimeIndex(times).sort_values()
         dt = datetime.now() - datetimes
         times = datetimes[dt <= pd.Timedelta(days=10)]
+        if len(datetimes) == 0:
+            return datetime.now(), datetime.now()
         if len(times) == 0:
             return datetimes[0], datetimes[-1]
         if len(times) == 1:
@@ -179,7 +181,9 @@ class Plot:
         entries = self.read_db("body")
 
         fig = make_subplots(rows=3, cols=1)
-        for n, key in enumerate(("Weight [kg]", "Height [cm]", "Head size [cm]")):
+        for n, key in enumerate(
+            ("Weight [kg]", "Height [cm]", "Head size [cm]")
+        ):
             prop = key.split()[0]
             entry = entries[["time", prop.lower()]].dropna()
             fig.append_trace(
