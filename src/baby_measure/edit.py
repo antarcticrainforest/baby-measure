@@ -44,7 +44,9 @@ class Edit:
         else:
             time = self.read_db(table)[["id", "time"]]
             values["time"] = (
-                time.loc[time.id == index]["time"].iloc[0].strftime("%Y-%m-%d %H:%M")
+                time.loc[time.id == index]["time"]
+                .iloc[0]
+                .strftime("%Y-%m-%d %H:%M")
             )
             alter_items = []
             for k, v in values.items():
@@ -62,11 +64,18 @@ class Edit:
             statement = f"update {table} set {alter} where id = {index};"
         self.db_settings.alter_table(statement, table)
 
-    def create_dropdown(self, key: str, title: str, data: pd.DataFrame) -> html.div:
-
-        dtype = [
-            type(data[d].iloc[0]) for d in data.columns if d not in ("time", "id")
-        ][0]
+    def create_dropdown(
+        self, key: str, title: str, data: pd.DataFrame
+    ) -> html.div:
+        try:
+            dtype = [
+                type(data[d].iloc[0])
+                for d in data.columns
+                if d not in ("time", "id")
+            ][0]
+        except IndexError:
+            print(data.columns)
+            dtype = str
         inp_obj = dcc.Input(
             id=f"{key}-field",
             type="number",
@@ -91,7 +100,9 @@ class Edit:
                 style=style,
                 options=[
                     {
-                        "label": data.time.iloc[i - 1].strftime("%a %d. %b %Y %H:%M"),
+                        "label": data.time.iloc[i - 1].strftime(
+                            "%a %d. %b %Y %H:%M"
+                        ),
                         "value": data.id.iloc[i - 1],
                     }
                     for i in range(len(data), 0, -1)
