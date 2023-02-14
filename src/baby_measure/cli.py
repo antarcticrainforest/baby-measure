@@ -16,7 +16,8 @@ def cli() -> None:
         Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
     )
     db_settings_file = Path(
-        os.environ.get("CONFIG_FILE", db_settings_file) or db_settings_file
+        os.environ.get("BABY_CONFIG_FILE", db_settings_file)
+        or db_settings_file
     )
     cli_app = argparse.ArgumentParser(
         prog="baby-measure",
@@ -43,7 +44,13 @@ def cli() -> None:
         default=False,
         help="Only (re)-configure the app.",
     )
-    cli_app.add_argument("-c", "--config", type=Path, default=db_settings_file)
+    cli_app.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        help="Path of the config file where configuration is stored",
+        default=db_settings_file,
+    )
     cli_app.add_argument(
         "-s",
         "--services",
@@ -54,7 +61,7 @@ def cli() -> None:
         help="Set the services you want to run.",
     )
     args = cli_app.parse_args()
-    with set_env_var("CONFIG_FILE", str(args.config)):
+    with set_env_var("BABY_CONFIG_FILE", str(args.config)):
         if args.reconfigure:
             DBSettings.configure(reconfigure=True)
             return
