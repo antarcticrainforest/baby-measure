@@ -16,7 +16,9 @@ from dash_datetimepicker import DashDatetimepickerSingle
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logging.basicConfig(
+    format="%(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 logger = logging.getLogger("baby-measure")
 
 
@@ -117,7 +119,9 @@ class DBSettings:
         self._last_connection = {}
 
     def _set_db(self, table: str) -> None:
-        with create_engine(self.connection, pool_recycle=3600).connect() as conn:
+        with create_engine(
+            self.connection, pool_recycle=3600
+        ).connect() as conn:
             entries = pd.read_sql(text(f"select * from {table}"), conn)
         self._tables[table] = entries.sort_values("time")
         self._last_connection[table] = datetime.now()
@@ -199,9 +203,15 @@ class DBSettings:
                 "Body Measure",
                 "body",
                 [
-                    dcc.Input(type="number", placeholder="Weight [kg]", id="weight"),
-                    dcc.Input(type="number", placeholder="Length [cm]", id="length"),
-                    dcc.Input(type="number", placeholder="Head size [cm]", id="head"),
+                    dcc.Input(
+                        type="number", placeholder="Weight [kg]", id="weight"
+                    ),
+                    dcc.Input(
+                        type="number", placeholder="Length [cm]", id="length"
+                    ),
+                    dcc.Input(
+                        type="number", placeholder="Head size [cm]", id="head"
+                    ),
                 ],
                 label=self.last_entry(
                     "body",
@@ -265,7 +275,6 @@ class DBSettings:
         extra_key: tuple[str, str] | None = None,
     ) -> str:
         entries = self.read_db(table)
-        print(entries)
         if extra_key:
             entries = entries.loc[entries[extra_key[0]] == extra_key[1]]
         entry = "No entries yet"
@@ -377,7 +386,8 @@ class DBSettings:
             db_user=os.environ.get("MYSQL_USER")
             or input(f"DB user name [{defaults['db_user']}]: ").strip()
             or defaults["db_user"],
-            db_passwd=os.environ.get("MYSQL_PASSWORD") or getpass("DB passwd: "),
+            db_passwd=os.environ.get("MYSQL_PASSWORD")
+            or getpass("DB passwd: "),
             tg_token=None,
         )
         inp_file.parent.mkdir(exist_ok=True, parents=True)
@@ -469,7 +479,8 @@ class DBSettings:
             Path(appdirs.user_config_dir()) / "baby-measure" / "db_config.json"
         )
         db_settings_file = Path(
-            os.environ.get("BABY_CONFIG_FILE", db_settings_file) or db_settings_file
+            os.environ.get("BABY_CONFIG_FILE", db_settings_file)
+            or db_settings_file
         )
         try:
             with db_settings_file.open() as f_obj:
@@ -478,7 +489,9 @@ class DBSettings:
             settings = cls.gather_config(db_settings_file, defaults)
         if reconfigure:
             defaults.update(settings)
-            settings = cls.gather_config(db_settings_file, defaults, manual_config=True)
+            settings = cls.gather_config(
+                db_settings_file, defaults, manual_config=True
+            )
         cls.db_settings = settings
         cls.create_tables(
             settings["db_host"],
