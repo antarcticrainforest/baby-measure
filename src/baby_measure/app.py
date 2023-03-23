@@ -58,7 +58,10 @@ def run_flask_server(
             )
         ]
     )
-    server.run(debug=debug_mode, port=str(port), host="0.0.0.0")
+    if debug_mode:
+        app.run(debug=debug_mode, port=str(port), host="0.0.0.0")
+    else:
+        server.run(port=str(port), host="0.0.0.0")
 
 
 def run_telegram(token: str, port: int = 8050):
