@@ -134,7 +134,9 @@ class ChatBot(Resource):
 
     def _extract_datetime(self, txt: str) -> tuple[datetime | None, str]:
         """Use a regex pattern to extract a datetime."""
-        date_regex = r"(\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{1,4}[./-]\d{1,2}[./-]\d{2})"
+        date_regex = (
+            r"(\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{1,4}[./-]\d{1,2}[./-]\d{2})"
+        )
         month_regex = r"(\d{1,2}[./-]\d{2})"
         time_regex = r"([01]?[0-9]|2[0-3]):[0-5][0-9]"
         date_search = re.search(date_regex, txt)
@@ -155,7 +157,9 @@ class ChatBot(Resource):
             txt = txt.replace(date_string, "")
         elif not date_string:
             if month_search:
-                month_string = month_search.group().replace(".", "-").replace("/", "-")
+                month_string = (
+                    month_search.group().replace(".", "-").replace("/", "-")
+                )
                 date_string = f"{datetime.now().strftime('%Y')}-{month_string}"
             else:
                 date_string = ""
@@ -179,7 +183,9 @@ class ChatBot(Resource):
         instruction, table = "", ""
         content: str = ""
         amount: float | None = None
-        mamadera_markers = [k for (k, v) in self.table_types.items() if v == "mamadera"]
+        mamadera_markers = [
+            k for (k, v) in self.table_types.items() if v == "mamadera"
+        ]
         for word in words:
 
             if word in self.action_instruction and not instruction:
@@ -303,16 +309,16 @@ class ChatBot(Resource):
     @staticmethod
     def _get_body_measure(table: pd.DataFrame) -> str:
         time = table["time"].strftime("%a %_d. %b %R")
-        return (
-            f"Measures from {time}:\n{table[['weight', 'height', 'head']].to_string()}"
-        )
+        return f"Measures from {time}:\n{table[['weight', 'height', 'head']].to_string()}"
 
     @staticmethod
     def _get_nappy_text(last: pd.DataFrame, table: pd.DataFrame) -> str:
 
         time = last["time"].strftime("%a %_d. %b %R")
         day = pd.DatetimeIndex([last["time"].date()])
-        count = int(table.groupby(pd.Grouper(freq="1D")).count().loc[day]["type"])
+        count = int(
+            table.groupby(pd.Grouper(freq="1D")).count().loc[day]["type"]
+        )
         content = str(last["type"])
         return (
             f"On {time} the nappy content was {content} "
@@ -344,12 +350,16 @@ class ChatBot(Resource):
             this_time = float(last["duration"])
             amount = "duration"
         daily_values = f"(total that day: {daily_sum})"
-        return f"The {content}{amount} from {time} was {this_time} {daily_values}"
+        return (
+            f"The {content}{amount} from {time} was {this_time} {daily_values}"
+        )
 
     def _read_db(self, content: str, when: datetime | str, table: str) -> str:
         if not table:
             return jsonify(
-                {"text": "I could not retrieve the information from the database"}
+                {
+                    "text": "I could not retrieve the information from the database"
+                }
             )
         entries = self.db_settings.read_db(table)
         entries = entries.set_index(pd.DatetimeIndex(entries["time"].values))
@@ -465,7 +475,11 @@ class ChatBot(Resource):
         img = base64.b64encode(
             fig.to_image(format="jpeg", width=width, height=height, scale=1.3)
         ).decode("utf-8")
-        plot_time = f'{times[0].strftime("%d. %b")} and {times[1].strftime("%d. %b")}'
+        ptime = fig.layout.xaxis.range
+        if ptime is None:
+            plot_text = "Here is the plot"
+        else:
+            plot_time = f'{ptime[0].strftime("%d. %b")} and {ptime[1].strftime("%d. %b")}'
         plot_text = plot_text or f"Here is the plot between {plot_time}"
         return jsonify({"text": plot_text, "img": img})
 
