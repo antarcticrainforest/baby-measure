@@ -293,7 +293,7 @@ class Plot:
             ),
         )
         fig.update_xaxes(
-            range=self.get_xaxis_range(data.time),
+            range=times or self.get_xaxis_range(data.time),
             fixedrange=False,
         )
         return fig

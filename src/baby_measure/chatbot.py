@@ -15,7 +15,6 @@ import numpy as np
 
 from .server_utils import db_settings, plot
 
-
 Instructions = NamedTuple(
     "Instructions",
     [
@@ -142,14 +141,15 @@ class ChatBot(Resource):
         time_search = re.search(time_regex, txt)
         month_search = re.search(month_regex, txt)
         date_string, txt = self._check_for_weekdays(txt)
+        txt = txt.replace("yesterdays", "yesterday")
         if "the day before yesterday" in txt:
             old = datetime.now() - timedelta(days=2)
             date_string = f"{old.year}-{old.month}-{old.day}"
-            txt = txt.replace("the day before yesterday")
+            txt = txt.replace("the day before yesterday", "")
         elif "yesterday" in txt:
             old = datetime.now() - timedelta(days=1)
             date_string = f"{old.year}-{old.month}-{old.day}"
-            txt = txt.replace("yesterday")
+            txt = txt.replace("yesterday", "")
         elif date_search:
             date_string = date_search.group()
             txt = txt.replace(date_string, "")
